@@ -1,14 +1,14 @@
 /**
- * Configuration handling for CallClawd plugin
+ * Configuration handling for CrabCallr plugin
  */
 
-import type { CallClawdConfig } from './types';
+import type { CrabCallrConfig } from './types';
 
 /**
  * Default configuration values
  */
-export const DEFAULT_CONFIG: Omit<CallClawdConfig, 'apiKey'> = {
-  serviceUrl: 'wss://api.callclawd.com/ws',
+export const DEFAULT_CONFIG: Omit<CrabCallrConfig, 'apiKey'> = {
+  serviceUrl: 'wss://api.crabcallr.com/ws',
   autoConnect: true,
   reconnectInterval: 5000,
   maxReconnectAttempts: 10,
@@ -17,16 +17,16 @@ export const DEFAULT_CONFIG: Omit<CallClawdConfig, 'apiKey'> = {
 /**
  * Validates and normalizes plugin configuration
  */
-export function validateConfig(config: Partial<CallClawdConfig>): CallClawdConfig {
+export function validateConfig(config: Partial<CrabCallrConfig>): CrabCallrConfig {
   if (!config.apiKey) {
     throw new Error(
-      'CallClawd API key is required. Get one at https://app.callclawd.com'
+      'CrabCallr API key is required. Get one at https://app.crabcallr.com'
     );
   }
 
   if (!config.apiKey.startsWith('cc_')) {
     throw new Error(
-      'Invalid CallClawd API key format. Keys should start with "cc_"'
+      'Invalid CrabCallr API key format. Keys should start with "cc_"'
     );
   }
 

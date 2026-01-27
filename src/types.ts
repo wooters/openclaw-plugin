@@ -1,14 +1,14 @@
 /**
- * CallClawd Plugin Types
+ * CrabCallr Plugin Types
  */
 
 /**
- * Plugin configuration from clawdbot.json
+ * Plugin configuration from moltbot.json
  */
-export interface CallClawdConfig {
-  /** API key from app.callclawd.com */
+export interface CrabCallrConfig {
+  /** API key from app.crabcallr.com */
   apiKey: string;
-  /** WebSocket URL for CallClawd service */
+  /** WebSocket URL for CrabCallr service */
   serviceUrl: string;
   /** Automatically connect on startup */
   autoConnect: boolean;
@@ -29,7 +29,7 @@ export type ConnectionStatus =
   | 'error';
 
 /**
- * Message types from CallClawd service
+ * Message types from CrabCallr service
  */
 export enum MessageType {
   /** Authentication request */
@@ -38,7 +38,7 @@ export enum MessageType {
   AUTH_RESPONSE = 'auth_response',
   /** Transcribed user speech */
   TRANSCRIPT = 'transcript',
-  /** Response from ClawdBot */
+  /** Response from MoltBot */
   RESPONSE = 'response',
   /** Call started */
   CALL_START = 'call_start',
@@ -181,7 +181,7 @@ export interface ActiveCall {
 /**
  * Event types emitted by the WebSocket manager
  */
-export interface CallClawdEvents {
+export interface CrabCallrEvents {
   connected: () => void;
   disconnected: (reason: string) => void;
   error: (error: Error) => void;
@@ -191,9 +191,9 @@ export interface CallClawdEvents {
 }
 
 /**
- * ClawdBot Gateway interface (subset of what we need)
+ * MoltBot Gateway interface (subset of what we need)
  */
-export interface ClawdBotGateway {
+export interface MoltBotGateway {
   /** Send a message to the agent and get a response */
   sendMessage(message: string, context?: MessageContext): Promise<string>;
   /** Get plugin configuration */
@@ -207,7 +207,7 @@ export interface ClawdBotGateway {
  */
 export interface MessageContext {
   /** Source of the message */
-  source: 'callclawd';
+  source: 'crabcallr';
   /** Call ID */
   callId: string;
   /** Whether this is a voice call */

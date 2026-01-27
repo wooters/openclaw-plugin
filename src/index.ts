@@ -1,18 +1,18 @@
 /**
- * CallClawd Plugin for ClawdBot
+ * CrabCallr Plugin for MoltBot
  *
- * Enables voice calling via phone or browser through the CallClawd service.
+ * Enables voice calling via phone or browser through the CrabCallr service.
  */
 
 import type {
-  CallClawdConfig,
-  ClawdBotGateway,
+  CrabCallrConfig,
+  MoltBotGateway,
   ActiveCall,
   ToolDefinition,
   CliCommand,
 } from './types';
 import { validateConfig, maskApiKey } from './config';
-import { CallClawdWebSocket } from './websocket';
+import { CrabCallrWebSocket } from './websocket';
 
 // Store for pending responses keyed by requestId
 const pendingResponses = new Map<string, {
@@ -27,24 +27,24 @@ const RESPONSE_TIMEOUT = 30000;
 /**
  * Plugin state
  */
-let wsManager: CallClawdWebSocket | null = null;
-let gateway: ClawdBotGateway | null = null;
-let config: CallClawdConfig | null = null;
+let wsManager: CrabCallrWebSocket | null = null;
+let gateway: MoltBotGateway | null = null;
+let config: CrabCallrConfig | null = null;
 
 /**
  * Logger wrapper that uses gateway logger if available
  */
 function log(level: 'debug' | 'info' | 'warn' | 'error', message: string, ...args: unknown[]): void {
   if (gateway) {
-    gateway.log(level, `[CallClawd] ${message}`, ...args);
+    gateway.log(level, `[CrabCallr] ${message}`, ...args);
   } else {
     const fn = level === 'error' ? console.error : console.log;
-    fn(`[CallClawd] ${message}`, ...args);
+    fn(`[CrabCallr] ${message}`, ...args);
   }
 }
 
 /**
- * Handle incoming transcript from CallClawd service
+ * Handle incoming transcript from CrabCallr service
  */
 async function handleTranscript(
   callId: string,
@@ -66,9 +66,9 @@ async function handleTranscript(
   }
 
   try {
-    // Send to ClawdBot agent with voice context
+    // Send to MoltBot agent with voice context
     const response = await gateway.sendMessage(text, {
-      source: 'callclawd',
+      source: 'crabcallr',
       callId,
       isVoice: true,
     });
@@ -116,8 +116,8 @@ function handleCallEnd(callId: string, reason: string, duration?: number): void 
  */
 function getStatusTool(): ToolDefinition {
   return {
-    name: 'callclawd_status',
-    description: 'Get the current status of the CallClawd voice connection',
+    name: 'crabcallr_status',
+    description: 'Get the current status of the CrabCallr voice connection',
     parameters: {
       type: 'object',
       properties: {},
@@ -151,10 +151,10 @@ function getCliCommands(): CliCommand[] {
   return [
     {
       name: 'status',
-      description: 'Show CallClawd connection status',
+      description: 'Show CrabCallr connection status',
       handler: async () => {
         if (!wsManager) {
-          console.log('CallClawd: Not initialized');
+          console.log('CrabCallr: Not initialized');
           return;
         }
 
@@ -162,7 +162,7 @@ function getCliCommands(): CliCommand[] {
         const userId = wsManager.getUserId();
         const activeCalls = wsManager.getActiveCalls();
 
-        console.log(`CallClawd Status: ${status}`);
+        console.log(`CrabCallr Status: ${status}`);
         if (userId) {
           console.log(`User ID: ${userId}`);
         }
@@ -181,33 +181,33 @@ function getCliCommands(): CliCommand[] {
     },
     {
       name: 'connect',
-      description: 'Manually connect to CallClawd service',
+      description: 'Manually connect to CrabCallr service',
       handler: async () => {
         if (!wsManager) {
-          console.log('CallClawd: Not initialized');
+          console.log('CrabCallr: Not initialized');
           return;
         }
         if (wsManager.isConnected()) {
-          console.log('CallClawd: Already connected');
+          console.log('CrabCallr: Already connected');
           return;
         }
-        console.log('CallClawd: Connecting...');
+        console.log('CrabCallr: Connecting...');
         wsManager.connect();
       },
     },
     {
       name: 'disconnect',
-      description: 'Disconnect from CallClawd service',
+      description: 'Disconnect from CrabCallr service',
       handler: async () => {
         if (!wsManager) {
-          console.log('CallClawd: Not initialized');
+          console.log('CrabCallr: Not initialized');
           return;
         }
         if (!wsManager.isConnected()) {
-          console.log('CallClawd: Not connected');
+          console.log('CrabCallr: Not connected');
           return;
         }
-        console.log('CallClawd: Disconnecting...');
+        console.log('CrabCallr: Disconnecting...');
         wsManager.disconnect();
       },
     },
@@ -216,45 +216,45 @@ function getCliCommands(): CliCommand[] {
 
 /**
  * Plugin activation function
- * Called by ClawdBot when the plugin is loaded
+ * Called by MoltBot when the plugin is loaded
  */
-export async function activate(gw: ClawdBotGateway): Promise<{
+export async function activate(gw: MoltBotGateway): Promise<{
   tools: ToolDefinition[];
   commands: CliCommand[];
 }> {
   gateway = gw;
-  log('info', 'Activating CallClawd plugin');
+  log('info', 'Activating CrabCallr plugin');
 
   // Get and validate configuration
-  const rawConfig = gateway.getPluginConfig<Partial<CallClawdConfig>>('callclawd');
+  const rawConfig = gateway.getPluginConfig<Partial<CrabCallrConfig>>('crabcallr');
   if (!rawConfig) {
-    throw new Error('CallClawd plugin configuration not found');
+    throw new Error('CrabCallr plugin configuration not found');
   }
 
   try {
     config = validateConfig(rawConfig);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Configuration validation failed';
-    throw new Error(`CallClawd configuration error: ${message}`);
+    throw new Error(`CrabCallr configuration error: ${message}`);
   }
 
   log('info', `Configured with service: ${config.serviceUrl}`);
   log('debug', `API key: ${maskApiKey(config.apiKey)}`);
 
   // Create WebSocket manager
-  wsManager = new CallClawdWebSocket(config, log);
+  wsManager = new CrabCallrWebSocket(config, log);
 
   // Set up event handlers
   wsManager.on('connected', () => {
-    log('info', 'Connected to CallClawd service');
+    log('info', 'Connected to CrabCallr service');
   });
 
   wsManager.on('disconnected', (reason) => {
-    log('info', `Disconnected from CallClawd service: ${reason}`);
+    log('info', `Disconnected from CrabCallr service: ${reason}`);
   });
 
   wsManager.on('error', (error) => {
-    log('error', `CallClawd error: ${error.message}`);
+    log('error', `CrabCallr error: ${error.message}`);
   });
 
   wsManager.on('callStart', handleCallStart);
@@ -271,7 +271,7 @@ export async function activate(gw: ClawdBotGateway): Promise<{
 
   // Connect if auto-connect is enabled
   if (config.autoConnect) {
-    log('info', 'Auto-connecting to CallClawd service');
+    log('info', 'Auto-connecting to CrabCallr service');
     wsManager.connect();
   }
 
@@ -283,10 +283,10 @@ export async function activate(gw: ClawdBotGateway): Promise<{
 
 /**
  * Plugin deactivation function
- * Called by ClawdBot when the plugin is unloaded
+ * Called by MoltBot when the plugin is unloaded
  */
 export async function deactivate(): Promise<void> {
-  log('info', 'Deactivating CallClawd plugin');
+  log('info', 'Deactivating CrabCallr plugin');
 
   // Clean up pending responses
   for (const [requestId, pending] of pendingResponses) {
@@ -306,4 +306,4 @@ export async function deactivate(): Promise<void> {
 }
 
 // Export types for consumers
-export type { CallClawdConfig, ActiveCall, ConnectionStatus } from './types';
+export type { CrabCallrConfig, ActiveCall, ConnectionStatus } from './types';
