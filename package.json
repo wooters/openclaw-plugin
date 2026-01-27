@@ -1,7 +1,7 @@
 {
-  "name": "@wooters/callclawd-plugin",
+  "name": "@wooters/callmolt-plugin",
   "version": "0.1.0",
-  "description": "ClawdBot plugin for CallClawd voice interface - talk to ClawdBot via phone or browser",
+  "description": "MoltBot plugin for CallMolt voice interface - talk to MoltBot via phone or browser",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -11,10 +11,10 @@
     "prepublishOnly": "npm run build"
   },
   "keywords": [
-    "clawdbot",
-    "clawdbot-plugin",
+    "moltbot",
+    "moltbot-plugin",
     "voice",
-    "callclawd",
+    "callmolt",
     "telephony",
     "webrtc"
   ],
@@ -22,16 +22,16 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/wooters/callclawd-plugin.git"
+    "url": "https://github.com/wooters/callmolt-plugin.git"
   },
-  "homepage": "https://callclawd.com",
+  "homepage": "https://callmolt.com",
   "bugs": {
-    "url": "https://github.com/wooters/callclawd-plugin/issues"
+    "url": "https://github.com/wooters/callmolt-plugin/issues"
   },
   "files": [
     "dist",
     "skills",
-    "clawdbot.plugin.json"
+    "moltbot.plugin.json"
   ],
   "dependencies": {
     "ws": "^8.16.0"

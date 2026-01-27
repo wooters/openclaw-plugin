@@ -1,19 +1,18 @@
-# CallClawd - MVP Design
+# MoltBot Voice Interface - MVP Design
 
-**Date:** 2026-01-26  
-**Status:** Draft  
-**Author:** Chuck / Claude brainstorm session  
-**Domain:** callclawd.com
+**Date:** 2026-01-26
+**Status:** Draft
+**Author:** Chuck / Claude brainstorm session
 
 ## Overview
 
-CallClawd is a voice interface that lets ClawdBot users talk to their AI assistant via phone calls or browser. The product extends Updaytr's voice agent expertise to the ClawdBot ecosystem.
+A voice interface that lets MoltBot users talk to their AI assistant via phone calls or browser. The product extends Updaytr's voice agent expertise to the MoltBot ecosystem.
 
-**Business model:** Open-source the ClawdBot skill; monetize the hosted telephony service.
+**Business model:** Open-source the MoltBot skill; monetize the hosted telephony service.
 
-## Competitive Analysis: ClawdBot's Existing Voice Capabilities
+## Competitive Analysis: MoltBot's Existing Voice Capabilities
 
-ClawdBot already has three voice-related features. Understanding their limitations reveals our opportunity.
+MoltBot already has three voice-related features. Understanding their limitations reveals our opportunity.
 
 ### 1. Voice-Call Plugin
 
@@ -22,7 +21,7 @@ The voice-call plugin provides phone calling via Twilio, Telnyx, or Plivo. It su
 **How inbound ASR works:** The plugin uses each provider's *native* speech recognition, not a dedicated ASR service. For Twilio, this means the `<Gather>` TwiML verb:
 
 ```
-User speaks → Twilio detects silence → Twilio's ASR returns text → ClawdBot responds → TTS plays
+User speaks → Twilio detects silence → Twilio's ASR returns text → MoltBot responds → TTS plays
 ```
 
 This is turn-based, not streaming. The system waits for the user to stop speaking before processing.
@@ -36,7 +35,7 @@ This is turn-based, not streaming. The system waits for the user to stop speakin
 
 ### 2. Talk Mode (Companion Apps)
 
-Continuous voice conversation for macOS/iOS/Android companion apps. The companion app connects to the ClawdBot Gateway via WebSocket (works locally or remotely via Tailscale/SSH tunnel).
+Continuous voice conversation for macOS/iOS/Android companion apps. The companion app connects to the MoltBot Gateway via WebSocket (works locally or remotely via Tailscale/SSH tunnel).
 
 **How it works:**
 - ASR runs locally on the device (Apple Speech Recognition)
@@ -56,7 +55,7 @@ Continuous voice conversation for macOS/iOS/Android companion apps. The companio
 
 ### 3. Voice Wake
 
-Wake word detection ("Hey Clawd") using Apple's speech recognizer. Triggers Talk Mode. Only available on Apple platforms.
+Wake word detection ("Hey Molt") using Apple's speech recognizer. Triggers Talk Mode. Only available on Apple platforms.
 
 ### The Gap We Fill
 
@@ -107,7 +106,7 @@ Wake word detection ("Hey Clawd") using Apple's speech recognizer. Triggers Talk
 │                            │ websocket                           │
 │  ┌─────────────┐           │                                     │
 │  │   Web UI    │           │                                     │
-│  │ app.callclawd.com   │           │                                     │
+│  │ app.*.com   │           │                                     │
 │  └─────────────┘           │                                     │
 └────────────────────────────┼────────────────────────────────────┘
                              │
@@ -115,12 +114,12 @@ Wake word detection ("Hey Clawd") using Apple's speech recognizer. Triggers Talk
 ┌────────────────────────────────────────────────────────────────┐
 │                    User's Machine                               │
 │  ┌─────────────────────────────────────────────────────────┐   │
-│  │                     ClawdBot                             │   │
+│  │                     MoltBot                             │   │
 │  │  ┌─────────────────────────────────────────────────┐    │   │
 │  │  │           Voice Skill (open source)             │    │   │
 │  │  │  - Establishes outbound websocket to service    │    │   │
-│  │  │  - Receives text, sends to ClawdBot             │    │   │
-│  │  │  - Returns ClawdBot response as text            │    │   │
+│  │  │  - Receives text, sends to MoltBot             │    │   │
+│  │  │  - Returns MoltBot response as text            │    │   │
 │  │  └─────────────────────────────────────────────────┘    │   │
 │  └─────────────────────────────────────────────────────────┘   │
 └────────────────────────────────────────────────────────────────┘
@@ -134,38 +133,38 @@ Wake word detection ("Hey Clawd") using Apple's speech recognizer. Triggers Talk
 3. Twilio routes call to LiveKit via SIP
 4. LiveKit Agent joins the session
 5. Audio streams through pipeline: Krisp → Deepgram STT → text
-6. Text sent via websocket to user's ClawdBot skill
-7. ClawdBot processes, returns response text
+6. Text sent via websocket to user's MoltBot skill
+7. MoltBot processes, returns response text
 8. Text sent to ElevenLabs TTS → audio streamed back to caller
 9. Barge-in: if user speaks mid-response, pipeline interrupts TTS
 
 ### Browser Call (Free)
-1. User opens app.callclawd.com, logs in
+1. User opens app.*.com, logs in
 2. User selects voice, clicks "Call"
 3. Browser connects to LiveKit room via WebRTC
 4. LiveKit Agent joins the room
-5. Same pipeline as phone: Krisp → Deepgram → ClawdBot → ElevenLabs
+5. Same pipeline as phone: Krisp → Deepgram → MoltBot → ElevenLabs
 6. Audio streamed back via WebRTC
 
 ## Components
 
-### ClawdBot Skill (Open Source)
-- Installed by user in their ClawdBot instance
+### MoltBot Skill (Open Source)
+- Installed by user in their MoltBot instance
 - On startup, establishes outbound websocket to hosted service
 - Authenticates with API key (generated during web UI signup)
 - Receives transcribed user speech as text
-- Passes text to ClawdBot's message handling
-- Returns ClawdBot's response as text
-- Stateless from the skill's perspective; ClawdBot manages context
+- Passes text to MoltBot's message handling
+- Returns MoltBot's response as text
+- Stateless from the skill's perspective; MoltBot manages context
 
 ### Hosted Service
 - **LiveKit Agents server:** Handles WebRTC and Twilio SIP connections
 - **Voice pipeline:** Deepgram (STT + VAD), ElevenLabs (TTS), Krisp (noise)
-- **Websocket manager:** Maintains connections to ClawdBot skills
+- **Websocket manager:** Maintains connections to MoltBot skills
 - **User database:** Accounts, phone numbers, voice preferences, usage tracking
 - **Billing integration:** Stripe for Pro subscriptions and overage
 
-### Web UI (app.callclawd.com)
+### Web UI (app.*.com)
 - **Auth:** Login/signup, API key generation for skill
 - **Call interface:** "Call" button, call status, end call
 - **Voice picker:** 5-10 curated ElevenLabs voices with preview
@@ -214,31 +213,31 @@ Wake word detection ("Hey Clawd") using Apple's speech recognizer. Triggers Talk
 ### Future Expansion
 - Multiple numbers per user ("call my mobile" vs "call my office")
 - Dedicated phone numbers (premium feature)
-- Outbound calling (ClawdBot initiates calls)
+- Outbound calling (MoltBot initiates calls)
 - Contact list (call others on user's behalf)
 
 ## User Onboarding Flow
 
-1. User discovers product (ClawdBot community, Updaytr marketing)
-2. Signs up at app.callclawd.com
+1. User discovers product (MoltBot community, Updaytr marketing)
+2. Signs up at app.*.com
 3. Receives API key
-4. Installs ClawdBot skill, configures with API key
+4. Installs MoltBot skill, configures with API key
 5. Skill connects to hosted service
 6. User opens web UI, selects voice, clicks "Call"
-7. Free tier active; user can talk to ClawdBot via browser
+7. Free tier active; user can talk to MoltBot via browser
 8. To upgrade: enters phone number, subscribes via Stripe
 9. Pro tier active; user can now call from their phone
 
 ## Error Handling
 
-### ClawdBot Disconnected
-- If websocket to ClawdBot skill drops during call:
+### MoltBot Disconnected
+- If websocket to MoltBot skill drops during call:
   - Play message: "Your assistant is temporarily unavailable"
   - Attempt reconnect for 10 seconds
   - If still disconnected, end call gracefully
 
-### ClawdBot Timeout
-- If ClawdBot takes >10 seconds to respond:
+### MoltBot Timeout
+- If MoltBot takes >10 seconds to respond:
   - Play filler: "Let me think about that..."
   - Continue waiting up to 30 seconds
   - If still no response, apologize and end call
@@ -265,7 +264,7 @@ Wake word detection ("Hey Clawd") using Apple's speech recognizer. Triggers Talk
 - Krisp noise suppression
 - Barge-in support
 - Web UI: auth, call button, voice picker, settings
-- ClawdBot skill (open source)
+- MoltBot skill (open source)
 - Stripe billing for Pro tier
 
 ### Out of Scope (Future)
@@ -279,185 +278,59 @@ Wake word detection ("Hey Clawd") using Apple's speech recognizer. Triggers Talk
 
 ## Open Questions
 
-1. **ClawdBot integration:** Does the skill architecture align with how ClawdBot skills work? May need to review ClawdBot docs.
-2. **Krisp integration:** Verify Krisp works with LiveKit pipeline or if alternative needed.
+1. **Product name:** Pagerr? Pingr? Buzzr? Need to verify domain availability.
+2. **MoltBot integration:** Does the skill architecture align with how MoltBot skills work? May need to review MoltBot docs.
+3. **Krisp integration:** Verify Krisp works with LiveKit pipeline or if alternative needed.
 
 ## Repository Structure
 
-Three repositories to separate concerns and enable reuse:
+Two repositories to separate open-source skill from proprietary service:
 
-### callclawd-plugin (Public)
+### voxxr-skill (Public)
 
-ClawdBot plugin + skill in one package. The plugin handles the websocket connection to the CallClawd service; the skill provides voice-optimized prompting so ClawdBot responds appropriately for spoken conversation.
+Open-source MoltBot skill, MIT/Apache licensed.
 
 ```
-github.com/wooters/callclawd-plugin/
-├── clawdbot.plugin.json       # Plugin manifest
-├── package.json               # npm package config
+github.com/updaytr/voxxr-skill/
 ├── src/
-│   ├── index.ts               # Plugin entry point
-│   ├── websocket.ts           # Connection to CallClawd service
-│   ├── config.ts              # Configuration handling
+│   ├── index.ts           # Skill entry point
+│   ├── websocket.ts       # Connection to hosted service
+│   ├── config.ts          # API key, service URL config
 │   └── types.ts
-├── skills/
-│   └── callclawd/
-│       └── SKILL.md           # Voice-optimized prompting instructions
-├── README.md
+├── SKILL.md               # MoltBot skill manifest
+├── README.md              # Setup instructions
+├── package.json
 └── tsconfig.json
 ```
 
-**Plugin responsibilities:**
-- Establishes websocket connection to CallClawd hosted service
-- Registers tools for the agent (e.g., connection status)
-- Routes incoming transcribed text to ClawdBot's agent
-- Sends ClawdBot's responses back to the service
-- Registers CLI commands (`clawdbot callclawd status`)
+### voxxr (Private)
 
-**Skill responsibilities:**
-- Instructs the AI to be concise and conversational
-- Avoids bullet points, markdown, code blocks in voice responses
-- Uses natural speech patterns
-- Handles barge-in gracefully
-- Loaded automatically when plugin is enabled
-
-### livekit-voice-agent (Public or Private)
-
-Reusable LiveKit voice agent pipeline. Can be used by CallClawd, Updaytr, or future projects.
+Proprietary service, web UI, and infrastructure.
 
 ```
-github.com/wooters/livekit-voice-agent/
-├── src/
-│   ├── agent.py               # LiveKit Agent entry point
-│   ├── pipeline.py            # Deepgram STT + ElevenLabs TTS + Krisp
-│   ├── stt.py                 # Deepgram wrapper
-│   ├── tts.py                 # ElevenLabs wrapper
-│   ├── vad.py                 # Voice activity detection
-│   └── types.py
-├── examples/
-│   ├── simple_agent.py
-│   └── with_backend.py
-├── Dockerfile
-├── requirements.txt
-├── pyproject.toml
-└── README.md
-```
-
-### callclawd (Private)
-
-Web UI, API backend, and infrastructure. Consumes the voice agent as a dependency and manages the websocket connections to ClawdBot plugins.
-
-```
-github.com/wooters/callclawd/
-├── api/
-│   ├── main.py                # FastAPI app
-│   ├── auth.py                # Authentication
-│   ├── users.py               # User management
-│   ├── billing.py             # Stripe integration
-│   ├── clawdbot_ws.py         # WebSocket manager for plugin connections
-│   └── db.py                  # Supabase client
+github.com/updaytr/voxxr/
+├── service/
+│   ├── agent/             # LiveKit Agent (Python)
+│   │   ├── main.py
+│   │   ├── pipeline.py    # Deepgram + ElevenLabs + Krisp
+│   │   └── moltbot.py    # WebSocket to skills
+│   ├── api/               # REST API for web UI
+│   │   ├── auth.py
+│   │   ├── users.py
+│   │   └── billing.py
+│   └── requirements.txt
 ├── web/
 │   ├── src/
 │   ├── package.json
-│   └── astro.config.mjs
-├── agent/
-│   ├── main.py                # Thin wrapper that imports livekit-voice-agent
-│   └── router.py              # Routes audio <-> ClawdBot plugin websockets
+│   └── next.config.js
 ├── infra/
 │   ├── docker-compose.yml
-│   └── Dockerfile
+│   ├── Dockerfile.agent
+│   ├── Dockerfile.api
+│   └── terraform/
 ├── .env.example
 └── README.md
 ```
-
-## Plugin + Skill Details
-
-### Why Both Are Needed
-
-| Component | Purpose |
-|-----------|---------|
-| **Plugin** | Runtime code that connects ClawdBot Gateway to CallClawd service |
-| **Skill** | Prompting instructions that adapt AI responses for voice |
-
-The plugin handles the *mechanics* (websocket, routing). The skill handles the *behavior* (how the AI should respond when in a voice call).
-
-### Example Skill Content (skills/callclawd/SKILL.md)
-
-```markdown
----
-name: callclawd
-description: Voice interface for ClawdBot - adapts responses for spoken conversation
-metadata: {"clawdbot":{"requires":{"config":["plugins.entries.callclawd.enabled"]}}}
----
-
-# CallClawd Voice Mode
-
-You are currently in a voice conversation via CallClawd. Adapt your responses for speech:
-
-## Response Style
-- Keep responses brief and conversational (1-3 sentences ideal)
-- Avoid bullet points, numbered lists, and markdown formatting
-- Don't read URLs, code blocks, or technical syntax aloud
-- Use natural speech patterns with contractions
-- If asked for something long, offer to send it via text instead
-
-## Interaction Patterns
-- Acknowledge you heard the user before diving into complex answers
-- Ask clarifying questions one at a time
-- If interrupted, acknowledge and pivot gracefully
-
-## What NOT to do
-- Don't say "Here's a bulleted list..."
-- Don't read out formatting characters
-- Don't give paragraph-length explanations unless asked
-```
-
-### Plugin Manifest (clawdbot.plugin.json)
-
-```json
-{
-  "id": "callclawd",
-  "name": "CallClawd Voice Interface",
-  "version": "0.1.0",
-  "description": "Talk to ClawdBot via phone or browser",
-  "entry": "./src/index.ts",
-  "skills": ["./skills"],
-  "configSchema": {
-    "type": "object",
-    "properties": {
-      "apiKey": { "type": "string" },
-      "serviceUrl": { "type": "string", "default": "wss://api.callclawd.com/ws" }
-    },
-    "required": ["apiKey"]
-  },
-  "uiHints": {
-    "apiKey": { "label": "CallClawd API Key", "sensitive": true },
-    "serviceUrl": { "label": "Service URL" }
-  }
-}
-```
-
-### Installation Flow
-
-1. User signs up at app.callclawd.com, gets API key
-2. User installs plugin: `clawdbot plugins install @wooters/callclawd-plugin`
-3. User configures in `~/.clawdbot/clawdbot.json`:
-   ```json
-   {
-     "plugins": {
-       "entries": {
-         "callclawd": {
-           "enabled": true,
-           "config": {
-             "apiKey": "their-api-key"
-           }
-         }
-       }
-     }
-   }
-   ```
-4. User restarts Gateway
-5. Plugin connects to CallClawd service, skill loads automatically
-6. User can now call via phone or browser
 
 ## Deployment Architecture
 
@@ -475,11 +348,11 @@ You are currently in a voice conversation via CallClawd. Adapt your responses fo
 ┌────────────────────────────────────────────────────────────┐
 │               Railway / Fly.io                              │
 │  ┌─────────────────────────────────────────────────────┐   │
-│  │         CallClawd Agent (uses livekit-voice-agent)   │   │
+│  │              LiveKit Agent (Python)                  │   │
 │  │  - Deepgram STT                                      │   │
 │  │  - ElevenLabs TTS                                    │   │
 │  │  - Krisp noise suppression                           │   │
-│  │  - WebSocket to ClawdBot skills                      │   │
+│  │  - WebSocket to MoltBot skills                      │   │
 │  └─────────────────────────────────────────────────────┘   │
 │  ┌─────────────────────────────────────────────────────┐   │
 │  │              API Server (Python/Node)                │   │
@@ -496,7 +369,7 @@ You are currently in a voice conversation via CallClawd. Adapt your responses fo
 |-----------|----------|-------|
 | Web UI | Cloudflare Pages | Static site, deploys from `web/` subdirectory |
 | API Server | Railway or Fly.io | REST API for auth, billing, settings |
-| CallClawd Agent | Railway or Fly.io | Persistent process, not serverless |
+| LiveKit Agent | Railway or Fly.io | Persistent process, not serverless |
 | LiveKit Server | LiveKit Cloud | Managed SFU, handles WebRTC/SIP |
 | Database | Supabase | User accounts, phone mappings, usage tracking |
 | Billing | Stripe | Subscriptions and metered usage |
@@ -512,70 +385,18 @@ You are currently in a voice conversation via CallClawd. Adapt your responses fo
 
 ### Cloudflare Pages Configuration
 
-For monorepo deployment from the `callclawd` repo:
+For monorepo deployment:
 
 | Setting | Value |
 |---------|-------|
-| Repository | `github.com/wooters/callclawd` |
+| Repository | `github.com/updaytr/voxxr` |
 | Root directory | `web` |
 | Build command | `npm run build` |
 | Build output | `dist` |
 
-### Web Framework: Astro (Recommended for SEO)
-
-**Why Astro for Cloudflare Pages + SEO:**
-
-| Requirement | Astro Solution |
-|-------------|----------------|
-| SEO / Crawlability | Static HTML by default — bots see full content, no JS required |
-| Cloudflare Pages | First-class support, zero-config deployment |
-| Performance | Ships zero JS unless you need it ("islands" architecture) |
-| Flexibility | Use React/Vue/Svelte components where needed (dashboard, call UI) |
-| Content | Built-in Markdown/MDX for docs, blog posts |
-
-**Astro vs alternatives:**
-
-| Framework | SSR on Cloudflare | SEO | Complexity |
-|-----------|-------------------|-----|------------|
-| **Astro** | ✅ Native | ✅ Static HTML | Low |
-| Next.js | ⚠️ Requires @cloudflare/next-on-pages | ✅ With SSR | Medium |
-| Nuxt | ⚠️ Requires nitro preset | ✅ With SSR | Medium |
-| SvelteKit | ✅ Native adapter | ✅ With SSR | Low |
-| Plain React (Vite) | N/A (SPA) | ❌ Poor | Low |
-
-**Recommended Astro setup:**
-
-```
-web/
-├── src/
-│   ├── pages/
-│   │   ├── index.astro        # Landing page (static)
-│   │   ├── pricing.astro      # Pricing page (static)
-│   │   ├── docs/[...slug].astro  # Docs from Markdown
-│   │   └── app/
-│   │       ├── index.astro    # Dashboard shell
-│   │       └── call.astro     # Call UI (React island)
-│   ├── components/
-│   │   ├── Header.astro
-│   │   ├── CallButton.tsx     # React component for interactivity
-│   │   └── VoicePicker.tsx
-│   ├── content/
-│   │   └── docs/              # Markdown docs
-│   └── layouts/
-│       └── Base.astro
-├── astro.config.mjs
-├── package.json
-└── tailwind.config.js
-```
-
-**Key patterns:**
-- Marketing pages (/, /pricing, /docs) → Pure Astro (static HTML, great SEO)
-- App pages (/app/call) → Astro page with React "islands" for interactivity
-- Auth → Handled via API, not SSR (keeps Pages deployment simple)
-
 ## Success Metrics
 
-- **Adoption:** Number of ClawdBot users who install the skill
+- **Adoption:** Number of MoltBot users who install the skill
 - **Activation:** % who make at least one call
 - **Conversion:** % of Free users who upgrade to Pro
 - **Retention:** Monthly active callers
@@ -584,10 +405,9 @@ web/
 
 ## Next Steps
 
-1. Register callclawd.com domain
-2. Create GitHub repos: callclawd-plugin, livekit-voice-agent, callclawd
-3. Prototype LiveKit + Deepgram + ElevenLabs pipeline in livekit-voice-agent
-4. Build minimal ClawdBot plugin with voice skill
-5. Test end-to-end with a single user
-6. Build web UI
-7. Alpha launch to ClawdBot community
+1. Verify domain availability for product name
+2. Prototype LiveKit + Deepgram + ElevenLabs pipeline
+3. Build minimal MoltBot skill
+4. Test end-to-end with a single user
+5. Build web UI
+6. Alpha launch to MoltBot community

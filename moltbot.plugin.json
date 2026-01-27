@@ -1,8 +1,8 @@
 {
-  "id": "callclawd",
-  "name": "CallClawd Voice Interface",
+  "id": "callmolt",
+  "name": "CallMolt Voice Interface",
   "version": "0.1.0",
-  "description": "Talk to ClawdBot via phone or browser with CallClawd",
+  "description": "Talk to MoltBot via phone or browser with CallMolt",
   "entry": "./dist/index.js",
   "skills": ["./skills"],
   "configSchema": {
@@ -10,17 +10,17 @@
     "properties": {
       "apiKey": {
         "type": "string",
-        "description": "Your CallClawd API key from app.callclawd.com"
+        "description": "Your CallMolt API key from app.callmolt.com"
       },
       "serviceUrl": {
         "type": "string",
-        "default": "wss://api.callclawd.com/ws",
-        "description": "CallClawd service WebSocket URL"
+        "default": "wss://api.callmolt.com/ws",
+        "description": "CallMolt service WebSocket URL"
       },
       "autoConnect": {
         "type": "boolean",
         "default": true,
-        "description": "Automatically connect to CallClawd service on startup"
+        "description": "Automatically connect to CallMolt service on startup"
       },
       "reconnectInterval": {
         "type": "number",
@@ -37,7 +37,7 @@
   },
   "uiHints": {
     "apiKey": {
-      "label": "CallClawd API Key",
+      "label": "CallMolt API Key",
       "sensitive": true,
       "placeholder": "cc_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
     },
