@@ -24,20 +24,20 @@ clawdbot plugins install @wooters/callclawd-plugin
 
 2. **Configure the plugin** - Add to your `~/.clawdbot/clawdbot.json`:
 
-```json
-{
-  "plugins": {
-    "entries": {
-      "callclawd": {
-        "enabled": true,
-        "config": {
-          "apiKey": "cc_your_api_key_here"
+    ```json
+    {
+      "plugins": {
+        "entries": {
+          "callclawd": {
+            "enabled": true,
+            "config": {
+              "apiKey": "cc_your_api_key_here"
+            }
+          }
         }
       }
     }
-  }
-}
-```
+    ```
 
 3. **Restart ClawdBot Gateway** - The plugin will automatically connect to the CallClawd service
 
@@ -45,22 +45,24 @@ clawdbot plugins install @wooters/callclawd-plugin
 
 ## Configuration Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `apiKey` | string | (required) | Your CallClawd API key |
-| `serviceUrl` | string | `wss://api.callclawd.com/ws` | WebSocket URL for the service |
-| `autoConnect` | boolean | `true` | Connect automatically on startup |
-| `reconnectInterval` | number | `5000` | Reconnection interval in ms |
-| `maxReconnectAttempts` | number | `10` | Max reconnect attempts (0 = unlimited) |
+| Option                 | Type    | Default                      | Description                            |
+| ---------------------- | ------- | ---------------------------- | -------------------------------------- |
+| `apiKey`               | string  | (required)                   | Your CallClawd API key                 |
+| `serviceUrl`           | string  | `wss://api.callclawd.com/ws` | WebSocket URL for the service          |
+| `autoConnect`          | boolean | `true`                       | Connect automatically on startup       |
+| `reconnectInterval`    | number  | `5000`                       | Reconnection interval in ms            |
+| `maxReconnectAttempts` | number  | `10`                         | Max reconnect attempts (0 = unlimited) |
 
 ## CLI Commands
 
 Check connection status:
+
 ```bash
 clawdbot callclawd status
 ```
 
 Manually connect/disconnect:
+
 ```bash
 clawdbot callclawd connect
 clawdbot callclawd disconnect
@@ -68,7 +70,7 @@ clawdbot callclawd disconnect
 
 ## How It Works
 
-```
+```plaintext
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
 │   Your Phone    │────▶│  CallClawd      │────▶│   Your         │
 │   or Browser    │◀────│  Service        │◀────│   ClawdBot     │
@@ -108,16 +110,19 @@ See [callclawd.com](https://callclawd.com) for current pricing.
 
 ## Troubleshooting
 
-**Plugin won't connect**
+### Plugin won't connect
+
 - Verify your API key is correct (should start with `cc_`)
 - Check that your ClawdBot Gateway can reach `api.callclawd.com`
 - Run `clawdbot callclawd status` to see connection details
 
-**No response from assistant**
+### No response from assistant
+
 - Ensure your ClawdBot agent is configured and working
 - Check ClawdBot logs for errors processing messages
 
-**Poor audio quality**
+### Poor audio quality
+
 - Use a quiet environment or headphones
 - Browser calling typically has better quality than phone
 
