@@ -1,0 +1,60 @@
+{
+  "id": "callclawd",
+  "name": "CallClawd Voice Interface",
+  "version": "0.1.0",
+  "description": "Talk to ClawdBot via phone or browser with CallClawd",
+  "entry": "./dist/index.js",
+  "skills": ["./skills"],
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "apiKey": {
+        "type": "string",
+        "description": "Your CallClawd API key from app.callclawd.com"
+      },
+      "serviceUrl": {
+        "type": "string",
+        "default": "wss://api.callclawd.com/ws",
+        "description": "CallClawd service WebSocket URL"
+      },
+      "autoConnect": {
+        "type": "boolean",
+        "default": true,
+        "description": "Automatically connect to CallClawd service on startup"
+      },
+      "reconnectInterval": {
+        "type": "number",
+        "default": 5000,
+        "description": "Reconnection interval in milliseconds"
+      },
+      "maxReconnectAttempts": {
+        "type": "number",
+        "default": 10,
+        "description": "Maximum number of reconnection attempts (0 for unlimited)"
+      }
+    },
+    "required": ["apiKey"]
+  },
+  "uiHints": {
+    "apiKey": {
+      "label": "CallClawd API Key",
+      "sensitive": true,
+      "placeholder": "cc_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    "serviceUrl": {
+      "label": "Service URL",
+      "advanced": true
+    },
+    "autoConnect": {
+      "label": "Auto-connect on startup"
+    },
+    "reconnectInterval": {
+      "label": "Reconnect interval (ms)",
+      "advanced": true
+    },
+    "maxReconnectAttempts": {
+      "label": "Max reconnect attempts",
+      "advanced": true
+    }
+  }
+}

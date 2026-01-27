@@ -1,0 +1,47 @@
+{
+  "name": "@wooters/callclawd-plugin",
+  "version": "0.1.0",
+  "description": "ClawdBot plugin for CallClawd voice interface - talk to ClawdBot via phone or browser",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "clawdbot",
+    "clawdbot-plugin",
+    "voice",
+    "callclawd",
+    "telephony",
+    "webrtc"
+  ],
+  "author": "Wooters",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wooters/callclawd-plugin.git"
+  },
+  "homepage": "https://callclawd.com",
+  "bugs": {
+    "url": "https://github.com/wooters/callclawd-plugin/issues"
+  },
+  "files": [
+    "dist",
+    "skills",
+    "clawdbot.plugin.json"
+  ],
+  "dependencies": {
+    "ws": "^8.16.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/ws": "^8.5.10",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
