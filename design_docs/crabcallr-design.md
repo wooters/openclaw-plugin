@@ -1,13 +1,13 @@
-# CallMolt - MVP Design
+# CrabCallr - MVP Design
 
 **Date:** 2026-01-26
 **Status:** Draft
 **Author:** Chuck / Claude brainstorm session
-**Domain:** callmolt.com
+**Domain:** crabcallr.com
 
 ## Overview
 
-CallMolt is a voice interface that lets MoltBot users talk to their AI assistant via phone calls or browser. The product extends Updaytr's voice agent expertise to the MoltBot ecosystem.
+CrabCallr is a voice interface that lets MoltBot users talk to their AI assistant via phone calls or browser. The product extends Updaytr's voice agent expertise to the MoltBot ecosystem.
 
 **Business model:** Open-source the MoltBot skill; monetize the hosted telephony service.
 
@@ -107,7 +107,7 @@ Wake word detection ("Hey Molt") using Apple's speech recognizer. Triggers Talk 
 │                            │ websocket                           │
 │  ┌─────────────┐           │                                     │
 │  │   Web UI    │           │                                     │
-│  │ app.callmolt.com   │           │                                     │
+│  │ app.crabcallr.com   │           │                                     │
 │  └─────────────┘           │                                     │
 └────────────────────────────┼────────────────────────────────────┘
                              │
@@ -140,7 +140,7 @@ Wake word detection ("Hey Molt") using Apple's speech recognizer. Triggers Talk 
 9. Barge-in: if user speaks mid-response, pipeline interrupts TTS
 
 ### Browser Call (Free)
-1. User opens app.callmolt.com, logs in
+1. User opens app.crabcallr.com, logs in
 2. User selects voice, clicks "Call"
 3. Browser connects to LiveKit room via WebRTC
 4. LiveKit Agent joins the room
@@ -165,7 +165,7 @@ Wake word detection ("Hey Molt") using Apple's speech recognizer. Triggers Talk 
 - **User database:** Accounts, phone numbers, voice preferences, usage tracking
 - **Billing integration:** Stripe for Pro subscriptions and overage
 
-### Web UI (app.callmolt.com)
+### Web UI (app.crabcallr.com)
 - **Auth:** Login/signup, API key generation for skill
 - **Call interface:** "Call" button, call status, end call
 - **Voice picker:** 5-10 curated ElevenLabs voices with preview
@@ -220,7 +220,7 @@ Wake word detection ("Hey Molt") using Apple's speech recognizer. Triggers Talk 
 ## User Onboarding Flow
 
 1. User discovers product (MoltBot community, Updaytr marketing)
-2. Signs up at app.callmolt.com
+2. Signs up at app.crabcallr.com
 3. Receives API key
 4. Installs MoltBot skill, configures with API key
 5. Skill connects to hosted service
@@ -286,32 +286,32 @@ Wake word detection ("Hey Molt") using Apple's speech recognizer. Triggers Talk 
 
 Three repositories to separate concerns and enable reuse:
 
-### callmolt-plugin (Public)
+### crabcallr-plugin (Public)
 
-MoltBot plugin + skill in one package. The plugin handles the websocket connection to the CallMolt service; the skill provides voice-optimized prompting so MoltBot responds appropriately for spoken conversation.
+MoltBot plugin + skill in one package. The plugin handles the websocket connection to the CrabCallr service; the skill provides voice-optimized prompting so MoltBot responds appropriately for spoken conversation.
 
 ```
-github.com/wooters/callmolt-plugin/
+github.com/wooters/crabcallr-plugin/
 ├── moltbot.plugin.json       # Plugin manifest
 ├── package.json               # npm package config
 ├── src/
 │   ├── index.ts               # Plugin entry point
-│   ├── websocket.ts           # Connection to CallMolt service
+│   ├── websocket.ts           # Connection to CrabCallr service
 │   ├── config.ts              # Configuration handling
 │   └── types.ts
 ├── skills/
-│   └── callmolt/
+│   └── crabcallr/
 │       └── SKILL.md           # Voice-optimized prompting instructions
 ├── README.md
 └── tsconfig.json
 ```
 
 **Plugin responsibilities:**
-- Establishes websocket connection to CallMolt hosted service
+- Establishes websocket connection to CrabCallr hosted service
 - Registers tools for the agent (e.g., connection status)
 - Routes incoming transcribed text to MoltBot's agent
 - Sends MoltBot's responses back to the service
-- Registers CLI commands (`moltbot callmolt status`)
+- Registers CLI commands (`moltbot crabcallr status`)
 
 **Skill responsibilities:**
 - Instructs the AI to be concise and conversational
@@ -322,7 +322,7 @@ github.com/wooters/callmolt-plugin/
 
 ### livekit-voice-agent (Public or Private)
 
-Reusable LiveKit voice agent pipeline. Can be used by CallMolt, Updaytr, or future projects.
+Reusable LiveKit voice agent pipeline. Can be used by CrabCallr, Updaytr, or future projects.
 
 ```
 github.com/wooters/livekit-voice-agent/
@@ -342,12 +342,12 @@ github.com/wooters/livekit-voice-agent/
 └── README.md
 ```
 
-### callmolt (Private)
+### crabcallr (Private)
 
 Web UI, API backend, and infrastructure. Consumes the voice agent as a dependency and manages the websocket connections to MoltBot plugins.
 
 ```
-github.com/wooters/callmolt/
+github.com/wooters/crabcallr/
 ├── api/
 │   ├── main.py                # FastAPI app
 │   ├── auth.py                # Authentication
@@ -375,23 +375,23 @@ github.com/wooters/callmolt/
 
 | Component | Purpose |
 |-----------|---------|
-| **Plugin** | Runtime code that connects MoltBot Gateway to CallMolt service |
+| **Plugin** | Runtime code that connects MoltBot Gateway to CrabCallr service |
 | **Skill** | Prompting instructions that adapt AI responses for voice |
 
 The plugin handles the *mechanics* (websocket, routing). The skill handles the *behavior* (how the AI should respond when in a voice call).
 
-### Example Skill Content (skills/callmolt/SKILL.md)
+### Example Skill Content (skills/crabcallr/SKILL.md)
 
 ```markdown
 ---
-name: callmolt
+name: crabcallr
 description: Voice interface for MoltBot - adapts responses for spoken conversation
-metadata: {"moltbot":{"requires":{"config":["plugins.entries.callmolt.enabled"]}}}
+metadata: {"moltbot":{"requires":{"config":["plugins.entries.crabcallr.enabled"]}}}
 ---
 
-# CallMolt Voice Mode
+# CrabCallr Voice Mode
 
-You are currently in a voice conversation via CallMolt. Adapt your responses for speech:
+You are currently in a voice conversation via CrabCallr. Adapt your responses for speech:
 
 ## Response Style
 - Keep responses brief and conversational (1-3 sentences ideal)
@@ -415,8 +415,8 @@ You are currently in a voice conversation via CallMolt. Adapt your responses for
 
 ```json
 {
-  "id": "callmolt",
-  "name": "CallMolt Voice Interface",
+  "id": "crabcallr",
+  "name": "CrabCallr Voice Interface",
   "version": "0.1.0",
   "description": "Talk to MoltBot via phone or browser",
   "entry": "./src/index.ts",
@@ -425,12 +425,12 @@ You are currently in a voice conversation via CallMolt. Adapt your responses for
     "type": "object",
     "properties": {
       "apiKey": { "type": "string" },
-      "serviceUrl": { "type": "string", "default": "wss://api.callmolt.com/ws" }
+      "serviceUrl": { "type": "string", "default": "wss://api.crabcallr.com/ws" }
     },
     "required": ["apiKey"]
   },
   "uiHints": {
-    "apiKey": { "label": "CallMolt API Key", "sensitive": true },
+    "apiKey": { "label": "CrabCallr API Key", "sensitive": true },
     "serviceUrl": { "label": "Service URL" }
   }
 }
@@ -438,14 +438,14 @@ You are currently in a voice conversation via CallMolt. Adapt your responses for
 
 ### Installation Flow
 
-1. User signs up at app.callmolt.com, gets API key
-2. User installs plugin: `moltbot plugins install @wooters/callmolt-plugin`
+1. User signs up at app.crabcallr.com, gets API key
+2. User installs plugin: `moltbot plugins install @wooters/crabcallr-plugin`
 3. User configures in `~/.moltbot/moltbot.json`:
    ```json
    {
      "plugins": {
        "entries": {
-         "callmolt": {
+         "crabcallr": {
            "enabled": true,
            "config": {
              "apiKey": "their-api-key"
@@ -456,7 +456,7 @@ You are currently in a voice conversation via CallMolt. Adapt your responses for
    }
    ```
 4. User restarts Gateway
-5. Plugin connects to CallMolt service, skill loads automatically
+5. Plugin connects to CrabCallr service, skill loads automatically
 6. User can now call via phone or browser
 
 ## Deployment Architecture
@@ -475,7 +475,7 @@ You are currently in a voice conversation via CallMolt. Adapt your responses for
 ┌────────────────────────────────────────────────────────────┐
 │               Railway / Fly.io                              │
 │  ┌─────────────────────────────────────────────────────┐   │
-│  │         CallMolt Agent (uses livekit-voice-agent)   │   │
+│  │         CrabCallr Agent (uses livekit-voice-agent)   │   │
 │  │  - Deepgram STT                                      │   │
 │  │  - ElevenLabs TTS                                    │   │
 │  │  - Krisp noise suppression                           │   │
@@ -496,7 +496,7 @@ You are currently in a voice conversation via CallMolt. Adapt your responses for
 |-----------|----------|-------|
 | Web UI | Cloudflare Pages | Static site, deploys from `web/` subdirectory |
 | API Server | Railway or Fly.io | REST API for auth, billing, settings |
-| CallMolt Agent | Railway or Fly.io | Persistent process, not serverless |
+| CrabCallr Agent | Railway or Fly.io | Persistent process, not serverless |
 | LiveKit Server | LiveKit Cloud | Managed SFU, handles WebRTC/SIP |
 | Database | Supabase | User accounts, phone mappings, usage tracking |
 | Billing | Stripe | Subscriptions and metered usage |
@@ -512,11 +512,11 @@ You are currently in a voice conversation via CallMolt. Adapt your responses for
 
 ### Cloudflare Pages Configuration
 
-For monorepo deployment from the `callmolt` repo:
+For monorepo deployment from the `crabcallr` repo:
 
 | Setting | Value |
 |---------|-------|
-| Repository | `github.com/wooters/callmolt` |
+| Repository | `github.com/wooters/crabcallr` |
 | Root directory | `web` |
 | Build command | `npm run build` |
 | Build output | `dist` |
@@ -584,8 +584,8 @@ web/
 
 ## Next Steps
 
-1. Register callmolt.com domain
-2. Create GitHub repos: callmolt-plugin, livekit-voice-agent, callmolt
+1. Register crabcallr.com domain
+2. Create GitHub repos: crabcallr-plugin, livekit-voice-agent, crabcallr
 3. Prototype LiveKit + Deepgram + ElevenLabs pipeline in livekit-voice-agent
 4. Build minimal MoltBot plugin with voice skill
 5. Test end-to-end with a single user

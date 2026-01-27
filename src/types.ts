@@ -1,14 +1,14 @@
 /**
- * CallMolt Plugin Types
+ * CrabCallr Plugin Types
  */
 
 /**
  * Plugin configuration from moltbot.json
  */
-export interface CallMoltConfig {
-  /** API key from app.callmolt.com */
+export interface CrabCallrConfig {
+  /** API key from app.crabcallr.com */
   apiKey: string;
-  /** WebSocket URL for CallMolt service */
+  /** WebSocket URL for CrabCallr service */
   serviceUrl: string;
   /** Automatically connect on startup */
   autoConnect: boolean;
@@ -29,7 +29,7 @@ export type ConnectionStatus =
   | 'error';
 
 /**
- * Message types from CallMolt service
+ * Message types from CrabCallr service
  */
 export enum MessageType {
   /** Authentication request */
@@ -181,7 +181,7 @@ export interface ActiveCall {
 /**
  * Event types emitted by the WebSocket manager
  */
-export interface CallMoltEvents {
+export interface CrabCallrEvents {
   connected: () => void;
   disconnected: (reason: string) => void;
   error: (error: Error) => void;
@@ -207,7 +207,7 @@ export interface MoltBotGateway {
  */
 export interface MessageContext {
   /** Source of the message */
-  source: 'callmolt';
+  source: 'crabcallr';
   /** Call ID */
   callId: string;
   /** Whether this is a voice call */

@@ -1,12 +1,12 @@
 ---
-name: callmolt
+name: crabcallr
 description: Voice interface for MoltBot - adapts responses for spoken conversation
-metadata: {"moltbot":{"requires":{"config":["plugins.entries.callmolt.enabled"]}}}
+metadata: {"moltbot":{"requires":{"config":["plugins.entries.crabcallr.enabled"]}}}
 ---
 
-# CallMolt Voice Mode
+# CrabCallr Voice Mode
 
-You are currently in a voice conversation via CallMolt. The user is speaking to you through their phone or browser, and your responses will be spoken aloud using text-to-speech. Adapt your communication style accordingly.
+You are currently in a voice conversation via CrabCallr. The user is speaking to you through their phone or browser, and your responses will be spoken aloud using text-to-speech. Adapt your communication style accordingly.
 
 ## Response Style
 

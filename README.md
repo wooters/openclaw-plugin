@@ -1,10 +1,10 @@
-# CallMolt Plugin for MoltBot
+# CrabCallr Plugin for MoltBot
 
-Talk to your MoltBot assistant via phone or browser with CallMolt.
+Talk to your MoltBot assistant via phone or browser with CrabCallr.
 
 ## Overview
 
-CallMolt is a voice interface that lets you have natural conversations with your MoltBot assistant. This plugin connects your MoltBot instance to the CallMolt hosted service, enabling:
+CrabCallr is a voice interface that lets you have natural conversations with your MoltBot assistant. This plugin connects your MoltBot instance to the CrabCallr hosted service, enabling:
 
 - **Browser calling** - Talk to MoltBot from any web browser via WebRTC
 - **Phone calling** - Call a phone number to reach your assistant (Pro tier)
@@ -15,12 +15,12 @@ CallMolt is a voice interface that lets you have natural conversations with your
 ## Installation
 
 ```bash
-moltbot plugins install @wooters/callmolt-plugin
+moltbot plugins install @wooters/crabcallr-plugin
 ```
 
 ## Setup
 
-1. **Get an API key** - Sign up at [app.callmolt.com](https://app.callmolt.com) and generate an API key
+1. **Get an API key** - Sign up at [app.crabcallr.com](https://app.crabcallr.com) and generate an API key
 
 2. **Configure the plugin** - Add to your `~/.moltbot/moltbot.json`:
 
@@ -28,7 +28,7 @@ moltbot plugins install @wooters/callmolt-plugin
     {
       "plugins": {
         "entries": {
-          "callmolt": {
+          "crabcallr": {
             "enabled": true,
             "config": {
               "apiKey": "cc_your_api_key_here"
@@ -39,16 +39,16 @@ moltbot plugins install @wooters/callmolt-plugin
     }
     ```
 
-3. **Restart MoltBot Gateway** - The plugin will automatically connect to the CallMolt service
+3. **Restart MoltBot Gateway** - The plugin will automatically connect to the CrabCallr service
 
-4. **Start calling** - Visit [app.callmolt.com](https://app.callmolt.com) and click "Call" to talk to your assistant
+4. **Start calling** - Visit [app.crabcallr.com](https://app.crabcallr.com) and click "Call" to talk to your assistant
 
 ## Configuration Options
 
 | Option                 | Type    | Default                      | Description                            |
 | ---------------------- | ------- | ---------------------------- | -------------------------------------- |
-| `apiKey`               | string  | (required)                   | Your CallMolt API key                 |
-| `serviceUrl`           | string  | `wss://api.callmolt.com/ws` | WebSocket URL for the service          |
+| `apiKey`               | string  | (required)                   | Your CrabCallr API key                 |
+| `serviceUrl`           | string  | `wss://api.crabcallr.com/ws` | WebSocket URL for the service          |
 | `autoConnect`          | boolean | `true`                       | Connect automatically on startup       |
 | `reconnectInterval`    | number  | `5000`                       | Reconnection interval in ms            |
 | `maxReconnectAttempts` | number  | `10`                         | Max reconnect attempts (0 = unlimited) |
@@ -58,21 +58,21 @@ moltbot plugins install @wooters/callmolt-plugin
 Check connection status:
 
 ```bash
-moltbot callmolt status
+moltbot crabcallr status
 ```
 
 Manually connect/disconnect:
 
 ```bash
-moltbot callmolt connect
-moltbot callmolt disconnect
+moltbot crabcallr connect
+moltbot crabcallr disconnect
 ```
 
 ## How It Works
 
 ```plaintext
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   Your Phone    │────▶│  CallMolt       │────▶│   Your         │
+│   Your Phone    │────▶│  CrabCallr      │────▶│   Your         │
 │   or Browser    │◀────│  Service        │◀────│   MoltBot      │
 └─────────────────┘     └─────────────────┘     └─────────────────┘
         │                       │                       │
@@ -83,11 +83,11 @@ moltbot callmolt disconnect
 ```
 
 1. You speak into your phone or browser
-2. CallMolt transcribes your speech in real-time (Deepgram)
+2. CrabCallr transcribes your speech in real-time (Deepgram)
 3. The transcript is sent to your MoltBot via this plugin
 4. MoltBot processes your request and generates a response
-5. The response is sent back to CallMolt
-6. CallMolt converts the response to speech (ElevenLabs)
+5. The response is sent back to CrabCallr
+6. CrabCallr converts the response to speech (ElevenLabs)
 7. You hear the response
 
 ## Voice Skill
@@ -106,15 +106,15 @@ The skill is automatically loaded when the plugin is enabled.
 - **Free tier** - Browser calling via WebRTC
 - **Pro tier** ($15/month) - Phone calling with 60 minutes included, $0.10/minute overage
 
-See [callmolt.com](https://callmolt.com) for current pricing.
+See [crabcallr.com](https://crabcallr.com) for current pricing.
 
 ## Troubleshooting
 
 ### Plugin won't connect
 
 - Verify your API key is correct (should start with `cc_`)
-- Check that your MoltBot Gateway can reach `api.callmolt.com`
-- Run `moltbot callmolt status` to see connection details
+- Check that your MoltBot Gateway can reach `api.crabcallr.com`
+- Run `moltbot crabcallr status` to see connection details
 
 ### No response from assistant
 

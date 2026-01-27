@@ -13,25 +13,25 @@ npm run clean      # Remove dist directory
 
 ## Architecture
 
-This is a MoltBot plugin that connects to the CallMolt hosted service via WebSocket, enabling voice calling (phone/browser) to a MoltBot assistant.
+This is a MoltBot plugin that connects to the CrabCallr hosted service via WebSocket, enabling voice calling (phone/browser) to a MoltBot assistant.
 
 ### Core Components
 
 - **src/index.ts** - Plugin entry point with `activate()` and `deactivate()` lifecycle hooks. Registers tools and CLI commands with MoltBot Gateway. Handles transcript-to-response flow.
-- **src/websocket.ts** - `CallMoltWebSocket` class managing persistent connection to CallMolt service. Handles authentication, reconnection with exponential backoff, ping/pong keepalive, and call lifecycle events.
+- **src/websocket.ts** - `CrabCallrWebSocket` class managing persistent connection to CrabCallr service. Handles authentication, reconnection with exponential backoff, ping/pong keepalive, and call lifecycle events.
 - **src/types.ts** - All TypeScript interfaces including message types (AUTH, TRANSCRIPT, RESPONSE, etc.), config schema, and MoltBot Gateway interface.
 - **src/config.ts** - Configuration validation and defaults.
 
 ### Message Flow
 
-1. CallMolt service sends `TRANSCRIPT` messages (user speech)
+1. CrabCallr service sends `TRANSCRIPT` messages (user speech)
 2. Plugin forwards text to MoltBot via `gateway.sendMessage()` with voice context
 3. MoltBot response is sent back via `RESPONSE` message
-4. CallMolt service converts to speech
+4. CrabCallr service converts to speech
 
 ### Voice Skill
 
-The `skills/callmolt/SKILL.md` skill is automatically loaded when the plugin is enabled. It instructs the LLM to produce concise, spoken-friendly responses without markdown, code blocks, or bullet points.
+The `skills/crabcallr/SKILL.md` skill is automatically loaded when the plugin is enabled. It instructs the LLM to produce concise, spoken-friendly responses without markdown, code blocks, or bullet points.
 
 ### Plugin Manifest
 

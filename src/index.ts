@@ -1,18 +1,18 @@
 /**
- * CallMolt Plugin for MoltBot
+ * CrabCallr Plugin for MoltBot
  *
- * Enables voice calling via phone or browser through the CallMolt service.
+ * Enables voice calling via phone or browser through the CrabCallr service.
  */
 
 import type {
-  CallMoltConfig,
+  CrabCallrConfig,
   MoltBotGateway,
   ActiveCall,
   ToolDefinition,
   CliCommand,
 } from './types';
 import { validateConfig, maskApiKey } from './config';
-import { CallMoltWebSocket } from './websocket';
+import { CrabCallrWebSocket } from './websocket';
 
 // Store for pending responses keyed by requestId
 const pendingResponses = new Map<string, {
@@ -27,24 +27,24 @@ const RESPONSE_TIMEOUT = 30000;
 /**
  * Plugin state
  */
-let wsManager: CallMoltWebSocket | null = null;
+let wsManager: CrabCallrWebSocket | null = null;
 let gateway: MoltBotGateway | null = null;
-let config: CallMoltConfig | null = null;
+let config: CrabCallrConfig | null = null;
 
 /**
  * Logger wrapper that uses gateway logger if available
  */
 function log(level: 'debug' | 'info' | 'warn' | 'error', message: string, ...args: unknown[]): void {
   if (gateway) {
-    gateway.log(level, `[CallMolt] ${message}`, ...args);
+    gateway.log(level, `[CrabCallr] ${message}`, ...args);
   } else {
     const fn = level === 'error' ? console.error : console.log;
-    fn(`[CallMolt] ${message}`, ...args);
+    fn(`[CrabCallr] ${message}`, ...args);
   }
 }
 
 /**
- * Handle incoming transcript from CallMolt service
+ * Handle incoming transcript from CrabCallr service
  */
 async function handleTranscript(
   callId: string,
@@ -68,7 +68,7 @@ async function handleTranscript(
   try {
     // Send to MoltBot agent with voice context
     const response = await gateway.sendMessage(text, {
-      source: 'callmolt',
+      source: 'crabcallr',
       callId,
       isVoice: true,
     });
@@ -116,8 +116,8 @@ function handleCallEnd(callId: string, reason: string, duration?: number): void 
  */
 function getStatusTool(): ToolDefinition {
   return {
-    name: 'callmolt_status',
-    description: 'Get the current status of the CallMolt voice connection',
+    name: 'crabcallr_status',
+    description: 'Get the current status of the CrabCallr voice connection',
     parameters: {
       type: 'object',
       properties: {},
@@ -151,10 +151,10 @@ function getCliCommands(): CliCommand[] {
   return [
     {
       name: 'status',
-      description: 'Show CallMolt connection status',
+      description: 'Show CrabCallr connection status',
       handler: async () => {
         if (!wsManager) {
-          console.log('CallMolt: Not initialized');
+          console.log('CrabCallr: Not initialized');
           return;
         }
 
@@ -162,7 +162,7 @@ function getCliCommands(): CliCommand[] {
         const userId = wsManager.getUserId();
         const activeCalls = wsManager.getActiveCalls();
 
-        console.log(`CallMolt Status: ${status}`);
+        console.log(`CrabCallr Status: ${status}`);
         if (userId) {
           console.log(`User ID: ${userId}`);
         }
@@ -181,33 +181,33 @@ function getCliCommands(): CliCommand[] {
     },
     {
       name: 'connect',
-      description: 'Manually connect to CallMolt service',
+      description: 'Manually connect to CrabCallr service',
       handler: async () => {
         if (!wsManager) {
-          console.log('CallMolt: Not initialized');
+          console.log('CrabCallr: Not initialized');
           return;
         }
         if (wsManager.isConnected()) {
-          console.log('CallMolt: Already connected');
+          console.log('CrabCallr: Already connected');
           return;
         }
-        console.log('CallMolt: Connecting...');
+        console.log('CrabCallr: Connecting...');
         wsManager.connect();
       },
     },
     {
       name: 'disconnect',
-      description: 'Disconnect from CallMolt service',
+      description: 'Disconnect from CrabCallr service',
       handler: async () => {
         if (!wsManager) {
-          console.log('CallMolt: Not initialized');
+          console.log('CrabCallr: Not initialized');
           return;
         }
         if (!wsManager.isConnected()) {
-          console.log('CallMolt: Not connected');
+          console.log('CrabCallr: Not connected');
           return;
         }
-        console.log('CallMolt: Disconnecting...');
+        console.log('CrabCallr: Disconnecting...');
         wsManager.disconnect();
       },
     },
@@ -223,38 +223,38 @@ export async function activate(gw: MoltBotGateway): Promise<{
   commands: CliCommand[];
 }> {
   gateway = gw;
-  log('info', 'Activating CallMolt plugin');
+  log('info', 'Activating CrabCallr plugin');
 
   // Get and validate configuration
-  const rawConfig = gateway.getPluginConfig<Partial<CallMoltConfig>>('callmolt');
+  const rawConfig = gateway.getPluginConfig<Partial<CrabCallrConfig>>('crabcallr');
   if (!rawConfig) {
-    throw new Error('CallMolt plugin configuration not found');
+    throw new Error('CrabCallr plugin configuration not found');
   }
 
   try {
     config = validateConfig(rawConfig);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Configuration validation failed';
-    throw new Error(`CallMolt configuration error: ${message}`);
+    throw new Error(`CrabCallr configuration error: ${message}`);
   }
 
   log('info', `Configured with service: ${config.serviceUrl}`);
   log('debug', `API key: ${maskApiKey(config.apiKey)}`);
 
   // Create WebSocket manager
-  wsManager = new CallMoltWebSocket(config, log);
+  wsManager = new CrabCallrWebSocket(config, log);
 
   // Set up event handlers
   wsManager.on('connected', () => {
-    log('info', 'Connected to CallMolt service');
+    log('info', 'Connected to CrabCallr service');
   });
 
   wsManager.on('disconnected', (reason) => {
-    log('info', `Disconnected from CallMolt service: ${reason}`);
+    log('info', `Disconnected from CrabCallr service: ${reason}`);
   });
 
   wsManager.on('error', (error) => {
-    log('error', `CallMolt error: ${error.message}`);
+    log('error', `CrabCallr error: ${error.message}`);
   });
 
   wsManager.on('callStart', handleCallStart);
@@ -271,7 +271,7 @@ export async function activate(gw: MoltBotGateway): Promise<{
 
   // Connect if auto-connect is enabled
   if (config.autoConnect) {
-    log('info', 'Auto-connecting to CallMolt service');
+    log('info', 'Auto-connecting to CrabCallr service');
     wsManager.connect();
   }
 
@@ -286,7 +286,7 @@ export async function activate(gw: MoltBotGateway): Promise<{
  * Called by MoltBot when the plugin is unloaded
  */
 export async function deactivate(): Promise<void> {
-  log('info', 'Deactivating CallMolt plugin');
+  log('info', 'Deactivating CrabCallr plugin');
 
   // Clean up pending responses
   for (const [requestId, pending] of pendingResponses) {
@@ -306,4 +306,4 @@ export async function deactivate(): Promise<void> {
 }
 
 // Export types for consumers
-export type { CallMoltConfig, ActiveCall, ConnectionStatus } from './types';
+export type { CrabCallrConfig, ActiveCall, ConnectionStatus } from './types';

@@ -1,8 +1,8 @@
 {
-  "id": "callmolt",
-  "name": "CallMolt Voice Interface",
+  "id": "crabcallr",
+  "name": "CrabCallr Voice Interface",
   "version": "0.1.0",
-  "description": "Talk to MoltBot via phone or browser with CallMolt",
+  "description": "Talk to MoltBot via phone or browser with CrabCallr",
   "entry": "./dist/index.js",
   "skills": ["./skills"],
   "configSchema": {
@@ -10,17 +10,17 @@
     "properties": {
       "apiKey": {
         "type": "string",
-        "description": "Your CallMolt API key from app.callmolt.com"
+        "description": "Your CrabCallr API key from app.crabcallr.com"
       },
       "serviceUrl": {
         "type": "string",
-        "default": "wss://api.callmolt.com/ws",
-        "description": "CallMolt service WebSocket URL"
+        "default": "wss://api.crabcallr.com/ws",
+        "description": "CrabCallr service WebSocket URL"
       },
       "autoConnect": {
         "type": "boolean",
         "default": true,
-        "description": "Automatically connect to CallMolt service on startup"
+        "description": "Automatically connect to CrabCallr service on startup"
       },
       "reconnectInterval": {
         "type": "number",
@@ -37,7 +37,7 @@
   },
   "uiHints": {
     "apiKey": {
-      "label": "CallMolt API Key",
+      "label": "CrabCallr API Key",
       "sensitive": true,
       "placeholder": "cc_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
     },

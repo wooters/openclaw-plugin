@@ -1,7 +1,7 @@
 {
-  "name": "@wooters/callmolt-plugin",
+  "name": "@wooters/crabcallr-plugin",
   "version": "0.1.0",
-  "description": "MoltBot plugin for CallMolt voice interface - talk to MoltBot via phone or browser",
+  "description": "MoltBot plugin for CrabCallr voice interface - talk to MoltBot via phone or browser",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -14,7 +14,7 @@
     "moltbot",
     "moltbot-plugin",
     "voice",
-    "callmolt",
+    "crabcallr",
     "telephony",
     "webrtc"
   ],
@@ -22,11 +22,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/wooters/callmolt-plugin.git"
+    "url": "https://github.com/wooters/crabcallr-plugin.git"
   },
-  "homepage": "https://callmolt.com",
+  "homepage": "https://crabcallr.com",
   "bugs": {
-    "url": "https://github.com/wooters/callmolt-plugin/issues"
+    "url": "https://github.com/wooters/crabcallr-plugin/issues"
   },
   "files": [
     "dist",

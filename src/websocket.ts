@@ -1,11 +1,11 @@
 /**
- * WebSocket connection manager for CallMolt service
+ * WebSocket connection manager for CrabCallr service
  */
 
 import WebSocket from 'ws';
 import { EventEmitter } from 'events';
 import type {
-  CallMoltConfig,
+  CrabCallrConfig,
   ConnectionStatus,
   MessageType,
   InboundMessage,
@@ -14,7 +14,7 @@ import type {
   ResponseMessage,
   PongMessage,
   ActiveCall,
-  CallMoltEvents,
+  CrabCallrEvents,
 } from './types';
 import { maskApiKey } from './config';
 
@@ -28,19 +28,19 @@ const PING_INTERVAL = 30000;
 const PING_TIMEOUT = 10000;
 
 /**
- * Type-safe event emitter for CallMolt events
+ * Type-safe event emitter for CrabCallr events
  */
-export interface CallMoltWebSocket {
-  on<K extends keyof CallMoltEvents>(event: K, listener: CallMoltEvents[K]): this;
-  off<K extends keyof CallMoltEvents>(event: K, listener: CallMoltEvents[K]): this;
-  emit<K extends keyof CallMoltEvents>(event: K, ...args: Parameters<CallMoltEvents[K]>): boolean;
+export interface CrabCallrWebSocket {
+  on<K extends keyof CrabCallrEvents>(event: K, listener: CrabCallrEvents[K]): this;
+  off<K extends keyof CrabCallrEvents>(event: K, listener: CrabCallrEvents[K]): this;
+  emit<K extends keyof CrabCallrEvents>(event: K, ...args: Parameters<CrabCallrEvents[K]>): boolean;
 }
 
 /**
- * Manages WebSocket connection to CallMolt service
+ * Manages WebSocket connection to CrabCallr service
  */
-export class CallMoltWebSocket extends EventEmitter {
-  private config: CallMoltConfig;
+export class CrabCallrWebSocket extends EventEmitter {
+  private config: CrabCallrConfig;
   private ws: WebSocket | null = null;
   private status: ConnectionStatus = 'disconnected';
   private reconnectAttempts = 0;
@@ -53,14 +53,14 @@ export class CallMoltWebSocket extends EventEmitter {
   private logger: (level: string, message: string, ...args: unknown[]) => void;
 
   constructor(
-    config: CallMoltConfig,
+    config: CrabCallrConfig,
     logger?: (level: string, message: string, ...args: unknown[]) => void
   ) {
     super();
     this.config = config;
     this.logger = logger ?? ((level, msg, ...args) => {
       const fn = level === 'error' ? console.error : console.log;
-      fn(`[CallMolt] ${msg}`, ...args);
+      fn(`[CrabCallr] ${msg}`, ...args);
     });
   }
 
@@ -93,7 +93,7 @@ export class CallMoltWebSocket extends EventEmitter {
   }
 
   /**
-   * Connect to the CallMolt service
+   * Connect to the CrabCallr service
    */
   connect(): void {
     if (this.ws && (this.status === 'connected' || this.status === 'connecting')) {
@@ -107,7 +107,7 @@ export class CallMoltWebSocket extends EventEmitter {
     try {
       this.ws = new WebSocket(this.config.serviceUrl, {
         headers: {
-          'User-Agent': `CallMolt-Plugin/${PLUGIN_VERSION}`,
+          'User-Agent': `CrabCallr-Plugin/${PLUGIN_VERSION}`,
         },
       });
 
@@ -126,7 +126,7 @@ export class CallMoltWebSocket extends EventEmitter {
    * Disconnect from the service
    */
   disconnect(): void {
-    this.log('info', 'Disconnecting from CallMolt service');
+    this.log('info', 'Disconnecting from CrabCallr service');
     this.clearTimers();
     this.reconnectAttempts = 0;
 
