@@ -1,4 +1,4 @@
-# MoltBot Voice Interface - MVP Design
+# OpenClaw Voice Interface - MVP Design
 
 **Date:** 2026-01-26
 **Status:** Draft
@@ -6,13 +6,13 @@
 
 ## Overview
 
-A voice interface that lets MoltBot users talk to their AI assistant via phone calls or browser. The product extends Updaytr's voice agent expertise to the MoltBot ecosystem.
+A voice interface that lets OpenClaw users talk to their AI assistant via phone calls or browser. The product extends Updaytr's voice agent expertise to the OpenClaw ecosystem.
 
-**Business model:** Open-source the MoltBot skill; monetize the hosted telephony service.
+**Business model:** Open-source the OpenClaw skill; monetize the hosted telephony service.
 
-## Competitive Analysis: MoltBot's Existing Voice Capabilities
+## Competitive Analysis: OpenClaw's Existing Voice Capabilities
 
-MoltBot already has three voice-related features. Understanding their limitations reveals our opportunity.
+OpenClaw already has three voice-related features. Understanding their limitations reveals our opportunity.
 
 ### 1. Voice-Call Plugin
 
@@ -21,7 +21,7 @@ The voice-call plugin provides phone calling via Twilio, Telnyx, or Plivo. It su
 **How inbound ASR works:** The plugin uses each provider's *native* speech recognition, not a dedicated ASR service. For Twilio, this means the `<Gather>` TwiML verb:
 
 ```
-User speaks → Twilio detects silence → Twilio's ASR returns text → MoltBot responds → TTS plays
+User speaks → Twilio detects silence → Twilio's ASR returns text → OpenClaw responds → TTS plays
 ```
 
 This is turn-based, not streaming. The system waits for the user to stop speaking before processing.
@@ -35,7 +35,7 @@ This is turn-based, not streaming. The system waits for the user to stop speakin
 
 ### 2. Talk Mode (Companion Apps)
 
-Continuous voice conversation for macOS/iOS/Android companion apps. The companion app connects to the MoltBot Gateway via WebSocket (works locally or remotely via Tailscale/SSH tunnel).
+Continuous voice conversation for macOS/iOS/Android companion apps. The companion app connects to the OpenClaw Gateway via WebSocket (works locally or remotely via Tailscale/SSH tunnel).
 
 **How it works:**
 - ASR runs locally on the device (Apple Speech Recognition)
@@ -114,12 +114,12 @@ Wake word detection ("Hey Molt") using Apple's speech recognizer. Triggers Talk 
 ┌────────────────────────────────────────────────────────────────┐
 │                    User's Machine                               │
 │  ┌─────────────────────────────────────────────────────────┐   │
-│  │                     MoltBot                             │   │
+│  │                     OpenClaw                             │   │
 │  │  ┌─────────────────────────────────────────────────┐    │   │
 │  │  │           Voice Skill (open source)             │    │   │
 │  │  │  - Establishes outbound websocket to service    │    │   │
-│  │  │  - Receives text, sends to MoltBot             │    │   │
-│  │  │  - Returns MoltBot response as text            │    │   │
+│  │  │  - Receives text, sends to OpenClaw             │    │   │
+│  │  │  - Returns OpenClaw response as text            │    │   │
 │  │  └─────────────────────────────────────────────────┘    │   │
 │  └─────────────────────────────────────────────────────────┘   │
 └────────────────────────────────────────────────────────────────┘
@@ -133,8 +133,8 @@ Wake word detection ("Hey Molt") using Apple's speech recognizer. Triggers Talk 
 3. Twilio routes call to LiveKit via SIP
 4. LiveKit Agent joins the session
 5. Audio streams through pipeline: Krisp → Deepgram STT → text
-6. Text sent via websocket to user's MoltBot skill
-7. MoltBot processes, returns response text
+6. Text sent via websocket to user's OpenClaw skill
+7. OpenClaw processes, returns response text
 8. Text sent to ElevenLabs TTS → audio streamed back to caller
 9. Barge-in: if user speaks mid-response, pipeline interrupts TTS
 
@@ -143,24 +143,24 @@ Wake word detection ("Hey Molt") using Apple's speech recognizer. Triggers Talk 
 2. User selects voice, clicks "Call"
 3. Browser connects to LiveKit room via WebRTC
 4. LiveKit Agent joins the room
-5. Same pipeline as phone: Krisp → Deepgram → MoltBot → ElevenLabs
+5. Same pipeline as phone: Krisp → Deepgram → OpenClaw → ElevenLabs
 6. Audio streamed back via WebRTC
 
 ## Components
 
-### MoltBot Skill (Open Source)
-- Installed by user in their MoltBot instance
+### OpenClaw Skill (Open Source)
+- Installed by user in their OpenClaw instance
 - On startup, establishes outbound websocket to hosted service
 - Authenticates with API key (generated during web UI signup)
 - Receives transcribed user speech as text
-- Passes text to MoltBot's message handling
-- Returns MoltBot's response as text
-- Stateless from the skill's perspective; MoltBot manages context
+- Passes text to OpenClaw's message handling
+- Returns OpenClaw's response as text
+- Stateless from the skill's perspective; OpenClaw manages context
 
 ### Hosted Service
 - **LiveKit Agents server:** Handles WebRTC and Twilio SIP connections
 - **Voice pipeline:** Deepgram (STT + VAD), ElevenLabs (TTS), Krisp (noise)
-- **Websocket manager:** Maintains connections to MoltBot skills
+- **Websocket manager:** Maintains connections to OpenClaw skills
 - **User database:** Accounts, phone numbers, voice preferences, usage tracking
 - **Billing integration:** Stripe for Pro subscriptions and overage
 
@@ -213,31 +213,31 @@ Wake word detection ("Hey Molt") using Apple's speech recognizer. Triggers Talk 
 ### Future Expansion
 - Multiple numbers per user ("call my mobile" vs "call my office")
 - Dedicated phone numbers (premium feature)
-- Outbound calling (MoltBot initiates calls)
+- Outbound calling (OpenClaw initiates calls)
 - Contact list (call others on user's behalf)
 
 ## User Onboarding Flow
 
-1. User discovers product (MoltBot community, Updaytr marketing)
+1. User discovers product (OpenClaw community, Updaytr marketing)
 2. Signs up at app.*.com
 3. Receives API key
-4. Installs MoltBot skill, configures with API key
+4. Installs OpenClaw skill, configures with API key
 5. Skill connects to hosted service
 6. User opens web UI, selects voice, clicks "Call"
-7. Free tier active; user can talk to MoltBot via browser
+7. Free tier active; user can talk to OpenClaw via browser
 8. To upgrade: enters phone number, subscribes via Stripe
 9. Pro tier active; user can now call from their phone
 
 ## Error Handling
 
-### MoltBot Disconnected
-- If websocket to MoltBot skill drops during call:
+### OpenClaw Disconnected
+- If websocket to OpenClaw skill drops during call:
   - Play message: "Your assistant is temporarily unavailable"
   - Attempt reconnect for 10 seconds
   - If still disconnected, end call gracefully
 
-### MoltBot Timeout
-- If MoltBot takes >10 seconds to respond:
+### OpenClaw Timeout
+- If OpenClaw takes >10 seconds to respond:
   - Play filler: "Let me think about that..."
   - Continue waiting up to 30 seconds
   - If still no response, apologize and end call
@@ -264,7 +264,7 @@ Wake word detection ("Hey Molt") using Apple's speech recognizer. Triggers Talk 
 - Krisp noise suppression
 - Barge-in support
 - Web UI: auth, call button, voice picker, settings
-- MoltBot skill (open source)
+- OpenClaw skill (open source)
 - Stripe billing for Pro tier
 
 ### Out of Scope (Future)
@@ -279,7 +279,7 @@ Wake word detection ("Hey Molt") using Apple's speech recognizer. Triggers Talk 
 ## Open Questions
 
 1. **Product name:** Pagerr? Pingr? Buzzr? Need to verify domain availability.
-2. **MoltBot integration:** Does the skill architecture align with how MoltBot skills work? May need to review MoltBot docs.
+2. **OpenClaw integration:** Does the skill architecture align with how OpenClaw skills work? May need to review OpenClaw docs.
 3. **Krisp integration:** Verify Krisp works with LiveKit pipeline or if alternative needed.
 
 ## Repository Structure
@@ -288,7 +288,7 @@ Two repositories to separate open-source skill from proprietary service:
 
 ### voxxr-skill (Public)
 
-Open-source MoltBot skill, MIT/Apache licensed.
+Open-source OpenClaw skill, MIT/Apache licensed.
 
 ```
 github.com/updaytr/voxxr-skill/
@@ -297,7 +297,7 @@ github.com/updaytr/voxxr-skill/
 │   ├── websocket.ts       # Connection to hosted service
 │   ├── config.ts          # API key, service URL config
 │   └── types.ts
-├── SKILL.md               # MoltBot skill manifest
+├── SKILL.md               # OpenClaw skill manifest
 ├── README.md              # Setup instructions
 ├── package.json
 └── tsconfig.json
@@ -313,7 +313,7 @@ github.com/updaytr/voxxr/
 │   ├── agent/             # LiveKit Agent (Python)
 │   │   ├── main.py
 │   │   ├── pipeline.py    # Deepgram + ElevenLabs + Krisp
-│   │   └── moltbot.py    # WebSocket to skills
+│   │   └── openclaw.py    # WebSocket to skills
 │   ├── api/               # REST API for web UI
 │   │   ├── auth.py
 │   │   ├── users.py
@@ -352,7 +352,7 @@ github.com/updaytr/voxxr/
 │  │  - Deepgram STT                                      │   │
 │  │  - ElevenLabs TTS                                    │   │
 │  │  - Krisp noise suppression                           │   │
-│  │  - WebSocket to MoltBot skills                      │   │
+│  │  - WebSocket to OpenClaw skills                      │   │
 │  └─────────────────────────────────────────────────────┘   │
 │  ┌─────────────────────────────────────────────────────┐   │
 │  │              API Server (Python/Node)                │   │
@@ -396,7 +396,7 @@ For monorepo deployment:
 
 ## Success Metrics
 
-- **Adoption:** Number of MoltBot users who install the skill
+- **Adoption:** Number of OpenClaw users who install the skill
 - **Activation:** % who make at least one call
 - **Conversion:** % of Free users who upgrade to Pro
 - **Retention:** Monthly active callers
@@ -407,7 +407,7 @@ For monorepo deployment:
 
 1. Verify domain availability for product name
 2. Prototype LiveKit + Deepgram + ElevenLabs pipeline
-3. Build minimal MoltBot skill
+3. Build minimal OpenClaw skill
 4. Test end-to-end with a single user
 5. Build web UI
-6. Alpha launch to MoltBot community
+6. Alpha launch to OpenClaw community

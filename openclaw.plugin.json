@@ -1,10 +1,12 @@
 {
   "id": "crabcallr",
-  "name": "CrabCallr Voice Interface",
-  "version": "0.1.0",
-  "description": "Talk to MoltBot via phone or browser with CrabCallr",
-  "entry": "./dist/index.js",
-  "skills": ["./skills"],
+  "channel": {
+    "label": "CrabCallr Voice",
+    "docsPath": "/channels/crabcallr",
+    "blurb": "Voice calling via phone or browser",
+    "order": 100,
+    "aliases": ["voice", "phone"]
+  },
   "configSchema": {
     "type": "object",
     "properties": {
@@ -56,5 +58,6 @@
       "label": "Max reconnect attempts",
       "advanced": true
     }
-  }
+  },
+  "skills": ["./skills"]
 }

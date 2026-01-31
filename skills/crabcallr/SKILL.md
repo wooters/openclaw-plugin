@@ -1,7 +1,7 @@
 ---
 name: crabcallr
-description: Voice interface for MoltBot - adapts responses for spoken conversation
-metadata: {"moltbot":{"requires":{"config":["plugins.entries.crabcallr.enabled"]}}}
+description: Voice interface for OpenClaw - adapts responses for spoken conversation
+metadata: {"openclaw":{"requires":{"config":["channels.crabcallr"]}}}
 ---
 
 # CrabCallr Voice Mode

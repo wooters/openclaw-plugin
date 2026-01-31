@@ -1,47 +1,91 @@
 /**
- * CrabCallr Plugin for MoltBot
+ * CrabCallr Plugin for OpenClaw
  *
  * Enables voice calling via phone or browser through the CrabCallr service.
+ * Implements the OpenClaw channel plugin API.
  */
 
+import { Type } from '@sinclair/typebox';
 import type {
+  PluginAPI,
   CrabCallrConfig,
-  MoltBotGateway,
   ActiveCall,
-  ToolDefinition,
-  CliCommand,
+  ChannelPlugin,
+  OpenClawConfig,
+  ChannelAccountConfig,
 } from './types';
 import { validateConfig, maskApiKey } from './config';
 import { CrabCallrWebSocket } from './websocket';
 
-// Store for pending responses keyed by requestId
-const pendingResponses = new Map<string, {
-  resolve: (text: string) => void;
-  reject: (error: Error) => void;
-  timeout: NodeJS.Timeout;
-}>();
+// Plugin version
+const PLUGIN_VERSION = '0.1.0';
 
-// Response timeout in ms
-const RESPONSE_TIMEOUT = 30000;
+// =============================================================================
+// Plugin State
+// =============================================================================
 
-/**
- * Plugin state
- */
 let wsManager: CrabCallrWebSocket | null = null;
-let gateway: MoltBotGateway | null = null;
+let pluginApi: PluginAPI | null = null;
 let config: CrabCallrConfig | null = null;
 
-/**
- * Logger wrapper that uses gateway logger if available
- */
-function log(level: 'debug' | 'info' | 'warn' | 'error', message: string, ...args: unknown[]): void {
-  if (gateway) {
-    gateway.log(level, `[CrabCallr] ${message}`, ...args);
-  } else {
-    const fn = level === 'error' ? console.error : console.log;
-    fn(`[CrabCallr] ${message}`, ...args);
-  }
-}
+// Map call IDs to conversation IDs for the channel plugin
+const callToConversation = new Map<string, string>();
+
+// =============================================================================
+// Channel Plugin Definition
+// =============================================================================
+
+const channelPlugin: ChannelPlugin = {
+  id: 'crabcallr',
+  meta: {
+    id: 'crabcallr',
+    label: 'CrabCallr Voice',
+    selectionLabel: 'CrabCallr (Voice)',
+    docsPath: '/channels/crabcallr',
+    blurb: 'Voice calling via phone or browser',
+    aliases: ['voice', 'phone'],
+  },
+  capabilities: {
+    chatTypes: ['direct'],
+  },
+  config: {
+    listAccountIds: (cfg: OpenClawConfig) =>
+      Object.keys(cfg.channels?.crabcallr?.accounts ?? {}),
+    resolveAccount: (cfg: OpenClawConfig, accountId?: string): ChannelAccountConfig | undefined =>
+      cfg.channels?.crabcallr?.accounts?.[accountId ?? 'default'],
+  },
+  outbound: {
+    deliveryMode: 'direct',
+    sendText: async ({ text, conversationId }) => {
+      // Find the call ID for this conversation
+      let callId: string | undefined;
+      for (const [cid, convId] of callToConversation) {
+        if (convId === conversationId) {
+          callId = cid;
+          break;
+        }
+      }
+
+      if (!callId) {
+        return { ok: false, error: 'No active call for conversation' };
+      }
+
+      if (!wsManager || !wsManager.isConnected()) {
+        return { ok: false, error: 'Not connected to CrabCallr service' };
+      }
+
+      // Generate a request ID for this response
+      const requestId = `resp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+      wsManager.sendResponse(callId, text, requestId);
+      return { ok: true };
+    },
+  },
+};
+
+// =============================================================================
+// Event Handlers
+// =============================================================================
 
 /**
  * Handle incoming transcript from CrabCallr service
@@ -54,33 +98,56 @@ async function handleTranscript(
 ): Promise<void> {
   // Only process final transcripts
   if (!isFinal) {
-    log('debug', `Interim transcript: "${text}"`);
+    pluginApi?.logger.debug(`[CrabCallr] Interim transcript: "${text}"`);
     return;
   }
 
-  log('info', `Processing: "${text}"`);
-
-  if (!gateway) {
-    log('error', 'Gateway not available');
+  if (!pluginApi) {
+    console.error('[CrabCallr] Plugin API not available');
     return;
   }
+
+  pluginApi.logger.info(`[CrabCallr] Processing: "${text}"`);
 
   try {
-    // Send to MoltBot agent with voice context
-    const response = await gateway.sendMessage(text, {
-      source: 'crabcallr',
-      callId,
-      isVoice: true,
+    // Get or create conversation ID for this call
+    let conversationId = callToConversation.get(callId);
+    if (!conversationId) {
+      conversationId = `crabcallr_${callId}`;
+      callToConversation.set(callId, conversationId);
+    }
+
+    // Send to OpenClaw via channel inbound API
+    const result = await pluginApi.inbound.receiveMessage({
+      accountId: 'default',
+      conversationId,
+      messageId: requestId ?? `msg_${Date.now()}`,
+      text,
+      sender: {
+        id: callId,
+        displayName: 'Voice Caller',
+      },
+      metadata: {
+        source: 'crabcallr',
+        callId,
+        isVoice: true,
+      },
     });
 
-    log('info', `Response: "${response.slice(0, 100)}${response.length > 100 ? '...' : ''}"`);
+    if (!result.ok) {
+      pluginApi.logger.error(`[CrabCallr] Failed to process message: ${result.error}`);
 
-    // Send response back to service
-    if (wsManager && requestId) {
-      wsManager.sendResponse(callId, response, requestId);
+      // Send error response back to caller
+      if (wsManager && requestId) {
+        wsManager.sendResponse(
+          callId,
+          "I'm sorry, I encountered an error processing your request.",
+          requestId
+        );
+      }
     }
   } catch (error) {
-    log('error', 'Failed to get response from agent', error);
+    pluginApi?.logger.error('[CrabCallr] Failed to handle transcript', error);
 
     // Send error response
     if (wsManager && requestId) {
@@ -100,7 +167,11 @@ function handleCallStart(call: ActiveCall): void {
   const sourceText = call.source === 'phone'
     ? `phone call${call.callerInfo?.phoneNumber ? ` from ${call.callerInfo.phoneNumber}` : ''}`
     : 'browser call';
-  log('info', `Starting ${sourceText}`);
+  pluginApi?.logger.info(`[CrabCallr] Starting ${sourceText}`);
+
+  // Create conversation mapping for this call
+  const conversationId = `crabcallr_${call.callId}`;
+  callToConversation.set(call.callId, conversationId);
 }
 
 /**
@@ -108,192 +179,82 @@ function handleCallStart(call: ActiveCall): void {
  */
 function handleCallEnd(callId: string, reason: string, duration?: number): void {
   const durationText = duration ? ` (${Math.round(duration / 1000)}s)` : '';
-  log('info', `Call ended: ${reason}${durationText}`);
+  pluginApi?.logger.info(`[CrabCallr] Call ended: ${reason}${durationText}`);
+
+  // Clean up conversation mapping
+  callToConversation.delete(callId);
 }
 
-/**
- * Get status tool definition
- */
-function getStatusTool(): ToolDefinition {
-  return {
-    name: 'crabcallr_status',
-    description: 'Get the current status of the CrabCallr voice connection',
-    parameters: {
-      type: 'object',
-      properties: {},
-    },
-    handler: async () => {
-      if (!wsManager) {
-        return { connected: false, status: 'not_initialized' };
-      }
+// =============================================================================
+// Service Lifecycle
+// =============================================================================
 
-      const status = wsManager.getStatus();
-      const activeCalls = wsManager.getActiveCalls();
+async function startService(): Promise<void> {
+  if (!pluginApi) {
+    throw new Error('Plugin API not initialized');
+  }
 
-      return {
-        connected: wsManager.isConnected(),
-        status,
-        userId: wsManager.getUserId(),
-        activeCalls: activeCalls.map(call => ({
-          callId: call.callId,
-          source: call.source,
-          duration: Date.now() - call.startTime,
-        })),
-      };
-    },
-  };
-}
+  const logger = pluginApi.logger;
+  logger.info('[CrabCallr] Starting service');
 
-/**
- * Get CLI commands
- */
-function getCliCommands(): CliCommand[] {
-  return [
-    {
-      name: 'status',
-      description: 'Show CrabCallr connection status',
-      handler: async () => {
-        if (!wsManager) {
-          console.log('CrabCallr: Not initialized');
-          return;
-        }
+  // Get configuration from channel accounts
+  // For now, we support a single 'default' account
+  const rawConfig = pluginApi.config.get<ChannelAccountConfig>('channels.crabcallr.accounts.default');
 
-        const status = wsManager.getStatus();
-        const userId = wsManager.getUserId();
-        const activeCalls = wsManager.getActiveCalls();
-
-        console.log(`CrabCallr Status: ${status}`);
-        if (userId) {
-          console.log(`User ID: ${userId}`);
-        }
-        if (config) {
-          console.log(`Service: ${config.serviceUrl}`);
-          console.log(`API Key: ${maskApiKey(config.apiKey)}`);
-        }
-        if (activeCalls.length > 0) {
-          console.log(`Active calls: ${activeCalls.length}`);
-          activeCalls.forEach(call => {
-            const duration = Math.round((Date.now() - call.startTime) / 1000);
-            console.log(`  - ${call.callId} (${call.source}, ${duration}s)`);
-          });
-        }
-      },
-    },
-    {
-      name: 'connect',
-      description: 'Manually connect to CrabCallr service',
-      handler: async () => {
-        if (!wsManager) {
-          console.log('CrabCallr: Not initialized');
-          return;
-        }
-        if (wsManager.isConnected()) {
-          console.log('CrabCallr: Already connected');
-          return;
-        }
-        console.log('CrabCallr: Connecting...');
-        wsManager.connect();
-      },
-    },
-    {
-      name: 'disconnect',
-      description: 'Disconnect from CrabCallr service',
-      handler: async () => {
-        if (!wsManager) {
-          console.log('CrabCallr: Not initialized');
-          return;
-        }
-        if (!wsManager.isConnected()) {
-          console.log('CrabCallr: Not connected');
-          return;
-        }
-        console.log('CrabCallr: Disconnecting...');
-        wsManager.disconnect();
-      },
-    },
-  ];
-}
-
-/**
- * Plugin activation function
- * Called by MoltBot when the plugin is loaded
- */
-export async function activate(gw: MoltBotGateway): Promise<{
-  tools: ToolDefinition[];
-  commands: CliCommand[];
-}> {
-  gateway = gw;
-  log('info', 'Activating CrabCallr plugin');
-
-  // Get and validate configuration
-  const rawConfig = gateway.getPluginConfig<Partial<CrabCallrConfig>>('crabcallr');
-  if (!rawConfig) {
-    throw new Error('CrabCallr plugin configuration not found');
+  if (!rawConfig?.apiKey) {
+    throw new Error('CrabCallr API key not configured. Set channels.crabcallr.accounts.default.apiKey');
   }
 
   try {
-    config = validateConfig(rawConfig);
+    config = validateConfig({
+      apiKey: rawConfig.apiKey,
+      serviceUrl: rawConfig.serviceUrl,
+      autoConnect: rawConfig.autoConnect,
+      reconnectInterval: rawConfig.reconnectInterval,
+      maxReconnectAttempts: rawConfig.maxReconnectAttempts,
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Configuration validation failed';
     throw new Error(`CrabCallr configuration error: ${message}`);
   }
 
-  log('info', `Configured with service: ${config.serviceUrl}`);
-  log('debug', `API key: ${maskApiKey(config.apiKey)}`);
+  logger.info(`[CrabCallr] Configured with service: ${config.serviceUrl}`);
+  logger.debug(`[CrabCallr] API key: ${maskApiKey(config.apiKey)}`);
 
-  // Create WebSocket manager
-  wsManager = new CrabCallrWebSocket(config, log);
+  // Create WebSocket manager with plugin logger
+  wsManager = new CrabCallrWebSocket(config, logger);
 
   // Set up event handlers
   wsManager.on('connected', () => {
-    log('info', 'Connected to CrabCallr service');
+    logger.info('[CrabCallr] Connected to CrabCallr service');
   });
 
   wsManager.on('disconnected', (reason) => {
-    log('info', `Disconnected from CrabCallr service: ${reason}`);
+    logger.info(`[CrabCallr] Disconnected from CrabCallr service: ${reason}`);
   });
 
   wsManager.on('error', (error) => {
-    log('error', `CrabCallr error: ${error.message}`);
+    logger.error(`[CrabCallr] Error: ${error.message}`);
   });
 
   wsManager.on('callStart', handleCallStart);
   wsManager.on('callEnd', handleCallEnd);
 
-  wsManager.on('transcript', (callId, text, isFinal) => {
-    // Note: requestId would come from the original transcript message
-    // For now, we generate one based on timestamp
-    const requestId = `req_${Date.now()}`;
+  wsManager.on('transcript', (callId, text, isFinal, requestId) => {
     handleTranscript(callId, text, isFinal, requestId).catch(err => {
-      log('error', 'Failed to handle transcript', err);
+      logger.error('[CrabCallr] Failed to handle transcript', err);
     });
   });
 
   // Connect if auto-connect is enabled
   if (config.autoConnect) {
-    log('info', 'Auto-connecting to CrabCallr service');
+    logger.info('[CrabCallr] Auto-connecting to CrabCallr service');
     wsManager.connect();
   }
-
-  return {
-    tools: [getStatusTool()],
-    commands: getCliCommands(),
-  };
 }
 
-/**
- * Plugin deactivation function
- * Called by MoltBot when the plugin is unloaded
- */
-export async function deactivate(): Promise<void> {
-  log('info', 'Deactivating CrabCallr plugin');
-
-  // Clean up pending responses
-  for (const [requestId, pending] of pendingResponses) {
-    clearTimeout(pending.timeout);
-    pending.reject(new Error('Plugin deactivated'));
-    pendingResponses.delete(requestId);
-  }
+async function stopService(): Promise<void> {
+  pluginApi?.logger.info('[CrabCallr] Stopping service');
 
   // Disconnect WebSocket
   if (wsManager) {
@@ -301,8 +262,163 @@ export async function deactivate(): Promise<void> {
     wsManager = null;
   }
 
-  gateway = null;
+  // Clear conversation mappings
+  callToConversation.clear();
+
   config = null;
+}
+
+// =============================================================================
+// Status Helpers
+// =============================================================================
+
+function getStatus(): {
+  connected: boolean;
+  status: string;
+  userId: string | null;
+  activeCalls: Array<{ callId: string; source: string; duration: number }>;
+} {
+  if (!wsManager) {
+    return {
+      connected: false,
+      status: 'not_initialized',
+      userId: null,
+      activeCalls: [],
+    };
+  }
+
+  const activeCalls = wsManager.getActiveCalls();
+
+  return {
+    connected: wsManager.isConnected(),
+    status: wsManager.getStatus(),
+    userId: wsManager.getUserId(),
+    activeCalls: activeCalls.map(call => ({
+      callId: call.callId,
+      source: call.source,
+      duration: Date.now() - call.startTime,
+    })),
+  };
+}
+
+// =============================================================================
+// Plugin Entry Point
+// =============================================================================
+
+export default function register(api: PluginAPI): void {
+  pluginApi = api;
+  const logger = api.logger;
+
+  logger.info(`[CrabCallr] Registering plugin v${PLUGIN_VERSION}`);
+
+  // Register as a channel plugin
+  api.registerChannel({ plugin: channelPlugin });
+
+  // Register service for WebSocket lifecycle
+  api.registerService({
+    id: 'crabcallr',
+    start: startService,
+    stop: stopService,
+  });
+
+  // Register status tool for agent use
+  api.registerTool({
+    name: 'crabcallr_status',
+    description: 'Get the current status of the CrabCallr voice connection',
+    parameters: Type.Object({}),
+    execute: async (_toolUseId, _params) => {
+      const status = getStatus();
+      return {
+        content: [{ type: 'text', text: JSON.stringify(status, null, 2) }],
+      };
+    },
+  });
+
+  // Register CLI commands
+  api.registerCli(
+    ({ program }) => {
+      program
+        .command('crabcallr:status')
+        .description('Show CrabCallr connection status')
+        .action(() => {
+          const status = getStatus();
+          console.log(`CrabCallr Status: ${status.status}`);
+          console.log(`Connected: ${status.connected}`);
+          if (status.userId) {
+            console.log(`User ID: ${status.userId}`);
+          }
+          if (config) {
+            console.log(`Service: ${config.serviceUrl}`);
+            console.log(`API Key: ${maskApiKey(config.apiKey)}`);
+          }
+          if (status.activeCalls.length > 0) {
+            console.log(`Active calls: ${status.activeCalls.length}`);
+            status.activeCalls.forEach(call => {
+              const duration = Math.round(call.duration / 1000);
+              console.log(`  - ${call.callId} (${call.source}, ${duration}s)`);
+            });
+          }
+        });
+
+      program
+        .command('crabcallr:connect')
+        .description('Manually connect to CrabCallr service')
+        .action(() => {
+          if (!wsManager) {
+            console.log('CrabCallr: Not initialized');
+            return;
+          }
+          if (wsManager.isConnected()) {
+            console.log('CrabCallr: Already connected');
+            return;
+          }
+          console.log('CrabCallr: Connecting...');
+          wsManager.connect();
+        });
+
+      program
+        .command('crabcallr:disconnect')
+        .description('Disconnect from CrabCallr service')
+        .action(() => {
+          if (!wsManager) {
+            console.log('CrabCallr: Not initialized');
+            return;
+          }
+          if (!wsManager.isConnected()) {
+            console.log('CrabCallr: Not connected');
+            return;
+          }
+          console.log('CrabCallr: Disconnecting...');
+          wsManager.disconnect();
+        });
+    },
+    { commands: ['crabcallr:status', 'crabcallr:connect', 'crabcallr:disconnect'] }
+  );
+
+  // Register gateway RPC methods
+  api.registerGatewayMethod('crabcallr.status', ({ respond }) => {
+    respond(getStatus());
+  });
+
+  api.registerGatewayMethod('crabcallr.speak', ({ respond, params }) => {
+    const { callId, text } = params as { callId?: string; text?: string };
+
+    if (!callId || !text) {
+      respond({ ok: false, error: 'Missing callId or text parameter' });
+      return;
+    }
+
+    if (!wsManager || !wsManager.isConnected()) {
+      respond({ ok: false, error: 'Not connected to CrabCallr service' });
+      return;
+    }
+
+    const requestId = `rpc_${Date.now()}`;
+    wsManager.sendResponse(callId, text, requestId);
+    respond({ ok: true, requestId });
+  });
+
+  logger.info('[CrabCallr] Plugin registered successfully');
 }
 
 // Export types for consumers

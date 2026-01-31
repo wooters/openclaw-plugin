@@ -1,7 +1,7 @@
 {
   "name": "@wooters/crabcallr-plugin",
   "version": "0.1.0",
-  "description": "MoltBot plugin for CrabCallr voice interface - talk to MoltBot via phone or browser",
+  "description": "OpenClaw plugin for CrabCallr voice interface - talk to OpenClaw via phone or browser",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -11,8 +11,8 @@
     "prepublishOnly": "npm run build"
   },
   "keywords": [
-    "moltbot",
-    "moltbot-plugin",
+    "openclaw",
+    "openclaw-plugin",
     "voice",
     "crabcallr",
     "telephony",
@@ -31,14 +31,16 @@
   "files": [
     "dist",
     "skills",
-    "moltbot.plugin.json"
+    "openclaw.plugin.json"
   ],
   "dependencies": {
+    "@sinclair/typebox": "^0.32.0",
     "ws": "^8.16.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
     "@types/ws": "^8.5.10",
+    "commander": "^12.0.0",
     "typescript": "^5.3.3"
   },
   "engines": {
