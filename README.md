@@ -26,11 +26,10 @@ openclaw plugins install @wooters/crabcallr-plugin
 
     ```json
     {
-      "plugins": {
-        "entries": {
-          "crabcallr": {
-            "enabled": true,
-            "config": {
+      "channels": {
+        "crabcallr": {
+          "accounts": {
+            "default": {
               "apiKey": "cc_your_api_key_here"
             }
           }
@@ -58,14 +57,14 @@ openclaw plugins install @wooters/crabcallr-plugin
 Check connection status:
 
 ```bash
-openclaw crabcallr status
+openclaw crabcallr:status
 ```
 
 Manually connect/disconnect:
 
 ```bash
-openclaw crabcallr connect
-openclaw crabcallr disconnect
+openclaw crabcallr:connect
+openclaw crabcallr:disconnect
 ```
 
 ## How It Works
@@ -114,7 +113,7 @@ See [crabcallr.com](https://crabcallr.com) for current pricing.
 
 - Verify your API key is correct (should start with `cc_`)
 - Check that your OpenClaw Gateway can reach `api.crabcallr.com`
-- Run `openclaw crabcallr status` to see connection details
+- Run `openclaw crabcallr:status` to see connection details
 
 ### No response from assistant
 
