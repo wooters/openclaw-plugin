@@ -9,7 +9,6 @@ import { Type } from '@sinclair/typebox';
 import type {
   PluginAPI,
   CrabCallrConfig,
-  ActiveCall,
   ChannelPlugin,
   OpenClawConfig,
   ChannelAccountConfig,
@@ -28,7 +27,7 @@ let wsManager: CrabCallrWebSocket | null = null;
 let pluginApi: PluginAPI | null = null;
 let config: CrabCallrConfig | null = null;
 
-// Map call IDs to conversation IDs for the channel plugin
+// Map call IDs to conversation IDs for tracking
 const callToConversation = new Map<string, string>();
 
 // =============================================================================
@@ -56,28 +55,19 @@ const channelPlugin: ChannelPlugin = {
   },
   outbound: {
     deliveryMode: 'direct',
-    sendText: async ({ text, conversationId }) => {
-      // Find the call ID for this conversation
-      let callId: string | undefined;
-      for (const [cid, convId] of callToConversation) {
-        if (convId === conversationId) {
-          callId = cid;
-          break;
-        }
-      }
+    sendText: async ({ text, metadata }) => {
+      // Get the request ID from metadata (set when we received the request)
+      const requestId = metadata?.requestId as string | undefined;
 
-      if (!callId) {
-        return { ok: false, error: 'No active call for conversation' };
+      if (!requestId) {
+        return { ok: false, error: 'No request ID for conversation' };
       }
 
       if (!wsManager || !wsManager.isConnected()) {
         return { ok: false, error: 'Not connected to CrabCallr service' };
       }
 
-      // Generate a request ID for this response
-      const requestId = `resp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-
-      wsManager.sendResponse(callId, text, requestId);
+      wsManager.sendResponse(requestId, text);
       return { ok: true };
     },
   },
@@ -88,20 +78,13 @@ const channelPlugin: ChannelPlugin = {
 // =============================================================================
 
 /**
- * Handle incoming transcript from CrabCallr service
+ * Handle incoming request from CrabCallr service
  */
-async function handleTranscript(
-  callId: string,
+async function handleRequest(
+  requestId: string,
   text: string,
-  isFinal: boolean,
-  requestId?: string
+  callId: string
 ): Promise<void> {
-  // Only process final transcripts
-  if (!isFinal) {
-    pluginApi?.logger.debug(`[CrabCallr] Interim transcript: "${text}"`);
-    return;
-  }
-
   if (!pluginApi) {
     console.error('[CrabCallr] Plugin API not available');
     return;
@@ -121,7 +104,7 @@ async function handleTranscript(
     const result = await pluginApi.inbound.receiveMessage({
       accountId: 'default',
       conversationId,
-      messageId: requestId ?? `msg_${Date.now()}`,
+      messageId: requestId,
       text,
       sender: {
         id: callId,
@@ -130,6 +113,7 @@ async function handleTranscript(
       metadata: {
         source: 'crabcallr',
         callId,
+        requestId,
         isVoice: true,
       },
     });
@@ -138,51 +122,24 @@ async function handleTranscript(
       pluginApi.logger.error(`[CrabCallr] Failed to process message: ${result.error}`);
 
       // Send error response back to caller
-      if (wsManager && requestId) {
+      if (wsManager) {
         wsManager.sendResponse(
-          callId,
-          "I'm sorry, I encountered an error processing your request.",
-          requestId
+          requestId,
+          "I'm sorry, I encountered an error processing your request."
         );
       }
     }
   } catch (error) {
-    pluginApi?.logger.error('[CrabCallr] Failed to handle transcript', error);
+    pluginApi?.logger.error('[CrabCallr] Failed to handle request', error);
 
     // Send error response
-    if (wsManager && requestId) {
+    if (wsManager) {
       wsManager.sendResponse(
-        callId,
-        "I'm sorry, I encountered an error processing your request.",
-        requestId
+        requestId,
+        "I'm sorry, I encountered an error processing your request."
       );
     }
   }
-}
-
-/**
- * Handle call start
- */
-function handleCallStart(call: ActiveCall): void {
-  const sourceText = call.source === 'phone'
-    ? `phone call${call.callerInfo?.phoneNumber ? ` from ${call.callerInfo.phoneNumber}` : ''}`
-    : 'browser call';
-  pluginApi?.logger.info(`[CrabCallr] Starting ${sourceText}`);
-
-  // Create conversation mapping for this call
-  const conversationId = `crabcallr_${call.callId}`;
-  callToConversation.set(call.callId, conversationId);
-}
-
-/**
- * Handle call end
- */
-function handleCallEnd(callId: string, reason: string, duration?: number): void {
-  const durationText = duration ? ` (${Math.round(duration / 1000)}s)` : '';
-  pluginApi?.logger.info(`[CrabCallr] Call ended: ${reason}${durationText}`);
-
-  // Clean up conversation mapping
-  callToConversation.delete(callId);
 }
 
 // =============================================================================
@@ -237,12 +194,9 @@ async function startService(): Promise<void> {
     logger.error(`[CrabCallr] Error: ${error.message}`);
   });
 
-  wsManager.on('callStart', handleCallStart);
-  wsManager.on('callEnd', handleCallEnd);
-
-  wsManager.on('transcript', (callId, text, isFinal, requestId) => {
-    handleTranscript(callId, text, isFinal, requestId).catch(err => {
-      logger.error('[CrabCallr] Failed to handle transcript', err);
+  wsManager.on('request', (requestId, text, callId) => {
+    handleRequest(requestId, text, callId).catch(err => {
+      logger.error('[CrabCallr] Failed to handle request', err);
     });
   });
 
@@ -276,28 +230,19 @@ function getStatus(): {
   connected: boolean;
   status: string;
   userId: string | null;
-  activeCalls: Array<{ callId: string; source: string; duration: number }>;
 } {
   if (!wsManager) {
     return {
       connected: false,
       status: 'not_initialized',
       userId: null,
-      activeCalls: [],
     };
   }
-
-  const activeCalls = wsManager.getActiveCalls();
 
   return {
     connected: wsManager.isConnected(),
     status: wsManager.getStatus(),
     userId: wsManager.getUserId(),
-    activeCalls: activeCalls.map(call => ({
-      callId: call.callId,
-      source: call.source,
-      duration: Date.now() - call.startTime,
-    })),
   };
 }
 
@@ -351,13 +296,6 @@ export default function register(api: PluginAPI): void {
             console.log(`Service: ${config.serviceUrl}`);
             console.log(`API Key: ${maskApiKey(config.apiKey)}`);
           }
-          if (status.activeCalls.length > 0) {
-            console.log(`Active calls: ${status.activeCalls.length}`);
-            status.activeCalls.forEach(call => {
-              const duration = Math.round(call.duration / 1000);
-              console.log(`  - ${call.callId} (${call.source}, ${duration}s)`);
-            });
-          }
         });
 
       program
@@ -401,10 +339,10 @@ export default function register(api: PluginAPI): void {
   });
 
   api.registerGatewayMethod('crabcallr.speak', ({ respond, params }) => {
-    const { callId, text } = params as { callId?: string; text?: string };
+    const { requestId, text } = params as { requestId?: string; text?: string };
 
-    if (!callId || !text) {
-      respond({ ok: false, error: 'Missing callId or text parameter' });
+    if (!requestId || !text) {
+      respond({ ok: false, error: 'Missing requestId or text parameter' });
       return;
     }
 
@@ -413,8 +351,7 @@ export default function register(api: PluginAPI): void {
       return;
     }
 
-    const requestId = `rpc_${Date.now()}`;
-    wsManager.sendResponse(callId, text, requestId);
+    wsManager.sendResponse(requestId, text);
     respond({ ok: true, requestId });
   });
 
@@ -422,4 +359,4 @@ export default function register(api: PluginAPI): void {
 }
 
 // Export types for consumers
-export type { CrabCallrConfig, ActiveCall, ConnectionStatus } from './types';
+export type { CrabCallrConfig, ConnectionStatus } from './types';

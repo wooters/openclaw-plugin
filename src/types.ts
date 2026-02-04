@@ -261,16 +261,12 @@ export type ConnectionStatus =
 export enum MessageType {
   /** Authentication request */
   AUTH = 'auth',
-  /** Authentication response */
-  AUTH_RESPONSE = 'auth_response',
-  /** Transcribed user speech */
-  TRANSCRIPT = 'transcript',
+  /** Authentication result */
+  AUTH_RESULT = 'auth_result',
+  /** Request from caller (transcribed speech) */
+  REQUEST = 'request',
   /** Response from OpenClaw */
   RESPONSE = 'response',
-  /** Call started */
-  CALL_START = 'call_start',
-  /** Call ended */
-  CALL_END = 'call_end',
   /** Heartbeat/ping */
   PING = 'ping',
   /** Heartbeat/pong */
@@ -284,104 +280,74 @@ export enum MessageType {
  */
 export interface BaseMessage {
   type: MessageType;
-  timestamp: number;
-  requestId?: string;
 }
 
 /**
  * Authentication message sent to service
  */
-export interface AuthMessage extends BaseMessage {
+export interface AuthMessage {
   type: MessageType.AUTH;
   apiKey: string;
-  pluginVersion: string;
 }
 
 /**
- * Authentication response from service
+ * Authentication result from service
  */
-export interface AuthResponseMessage extends BaseMessage {
-  type: MessageType.AUTH_RESPONSE;
+export interface AuthResultMessage {
+  type: MessageType.AUTH_RESULT;
   success: boolean;
   userId?: string;
   error?: string;
 }
 
 /**
- * Transcript of user speech from service
+ * Request message from caller (transcribed speech)
  */
-export interface TranscriptMessage extends BaseMessage {
-  type: MessageType.TRANSCRIPT;
-  callId: string;
+export interface RequestMessage {
+  type: MessageType.REQUEST;
+  requestId: string;
   text: string;
-  isFinal: boolean;
-  confidence?: number;
+  callId: string;
 }
 
 /**
  * Response to send back to service
  */
-export interface ResponseMessage extends BaseMessage {
+export interface ResponseMessage {
   type: MessageType.RESPONSE;
-  callId: string;
-  text: string;
   requestId: string;
-}
-
-/**
- * Call start notification
- */
-export interface CallStartMessage extends BaseMessage {
-  type: MessageType.CALL_START;
-  callId: string;
-  source: 'browser' | 'phone';
-  callerInfo?: {
-    phoneNumber?: string;
-  };
-}
-
-/**
- * Call end notification
- */
-export interface CallEndMessage extends BaseMessage {
-  type: MessageType.CALL_END;
-  callId: string;
-  reason: 'user_hangup' | 'timeout' | 'error' | 'disconnect';
-  duration?: number;
+  text: string;
 }
 
 /**
  * Ping message for keepalive
  */
-export interface PingMessage extends BaseMessage {
+export interface PingMessage {
   type: MessageType.PING;
 }
 
 /**
  * Pong message for keepalive
  */
-export interface PongMessage extends BaseMessage {
+export interface PongMessage {
   type: MessageType.PONG;
 }
 
 /**
  * Error message
  */
-export interface ErrorMessage extends BaseMessage {
+export interface ErrorMessage {
   type: MessageType.ERROR;
   code: string;
   message: string;
-  callId?: string;
 }
 
 /**
  * Union type for all inbound messages (from service)
  */
 export type InboundWsMessage =
-  | AuthResponseMessage
-  | TranscriptMessage
-  | CallStartMessage
-  | CallEndMessage
+  | AuthResultMessage
+  | RequestMessage
   | PingMessage
   | ErrorMessage;
 
@@ -394,25 +360,11 @@ export type OutboundWsMessage =
   | PongMessage;
 
 /**
- * Active call information
- */
-export interface ActiveCall {
-  callId: string;
-  source: 'browser' | 'phone';
-  startTime: number;
-  callerInfo?: {
-    phoneNumber?: string;
-  };
-}
-
-/**
  * Event types emitted by the WebSocket manager
  */
 export interface CrabCallrEvents {
   connected: () => void;
   disconnected: (reason: string) => void;
   error: (error: Error) => void;
-  callStart: (call: ActiveCall) => void;
-  callEnd: (callId: string, reason: string, duration?: number) => void;
-  transcript: (callId: string, text: string, isFinal: boolean, requestId?: string) => void;
+  request: (requestId: string, text: string, callId: string) => void;
 }

@@ -8,7 +8,7 @@ import type { CrabCallrConfig } from './types';
  * Default configuration values
  */
 export const DEFAULT_CONFIG: Omit<CrabCallrConfig, 'apiKey'> = {
-  serviceUrl: 'wss://api.crabcallr.com/ws',
+  serviceUrl: 'wss://ws.crabcallr.com/plugin',
   autoConnect: true,
   reconnectInterval: 5000,
   maxReconnectAttempts: 10,

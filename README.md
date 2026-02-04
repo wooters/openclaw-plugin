@@ -44,13 +44,13 @@ openclaw plugins install @wooters/crabcallr-plugin
 
 ## Configuration Options
 
-| Option                 | Type    | Default                      | Description                            |
-| ---------------------- | ------- | ---------------------------- | -------------------------------------- |
-| `apiKey`               | string  | (required)                   | Your CrabCallr API key                 |
-| `serviceUrl`           | string  | `wss://api.crabcallr.com/ws` | WebSocket URL for the service          |
-| `autoConnect`          | boolean | `true`                       | Connect automatically on startup       |
-| `reconnectInterval`    | number  | `5000`                       | Reconnection interval in ms            |
-| `maxReconnectAttempts` | number  | `10`                         | Max reconnect attempts (0 = unlimited) |
+| Option                 | Type    | Default                         | Description                            |
+| ---------------------- | ------- | ------------------------------- | -------------------------------------- |
+| `apiKey`               | string  | (required)                      | Your CrabCallr API key                 |
+| `serviceUrl`           | string  | `wss://ws.crabcallr.com/plugin` | WebSocket URL for the service          |
+| `autoConnect`          | boolean | `true`                          | Connect automatically on startup       |
+| `reconnectInterval`    | number  | `5000`                          | Reconnection interval in ms            |
+| `maxReconnectAttempts` | number  | `10`                            | Max reconnect attempts (0 = unlimited) |
 
 ## CLI Commands
 
@@ -112,7 +112,7 @@ See [crabcallr.com](https://crabcallr.com) for current pricing.
 ### Plugin won't connect
 
 - Verify your API key is correct (should start with `cc_`)
-- Check that your OpenClaw Gateway can reach `api.crabcallr.com`
+- Check that your OpenClaw Gateway can reach `ws.crabcallr.com`
 - Run `openclaw crabcallr:status` to see connection details
 
 ### No response from assistant

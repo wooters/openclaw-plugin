@@ -18,13 +18,13 @@ This is a OpenClaw plugin that connects to the CrabCallr hosted service via WebS
 ### Core Components
 
 - **src/index.ts** - Plugin entry point exporting a default `register(api: PluginAPI)` function. Registers as a channel plugin, service, tools, and CLI commands. Handles transcript-to-response flow via channel inbound/outbound APIs.
-- **src/websocket.ts** - `CrabCallrWebSocket` class managing persistent connection to CrabCallr service. Handles authentication, reconnection with exponential backoff, ping/pong keepalive, and call lifecycle events.
-- **src/types.ts** - All TypeScript interfaces including PluginAPI, channel plugin types, message types (AUTH, TRANSCRIPT, RESPONSE, etc.), and config schema.
+- **src/websocket.ts** - `CrabCallrWebSocket` class managing persistent connection to CrabCallr service. Handles authentication, reconnection with exponential backoff, and ping/pong keepalive.
+- **src/types.ts** - All TypeScript interfaces including PluginAPI, channel plugin types, message types (AUTH, REQUEST, RESPONSE, etc.), and config schema.
 - **src/config.ts** - Configuration validation and defaults.
 
 ### Message Flow
 
-1. CrabCallr service sends `TRANSCRIPT` messages (user speech)
+1. CrabCallr service sends `REQUEST` messages (user speech)
 2. Plugin forwards text to OpenClaw via `api.inbound.receiveMessage()` as a channel message
 3. OpenClaw agent processes and responds via channel's `outbound.sendText()`
 4. Plugin sends `RESPONSE` message back to CrabCallr service

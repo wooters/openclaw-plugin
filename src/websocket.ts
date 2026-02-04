@@ -13,13 +13,12 @@ import type {
   AuthMessage,
   ResponseMessage,
   PongMessage,
-  ActiveCall,
   CrabCallrEvents,
   Logger,
 } from './types';
 import { maskApiKey } from './config';
 
-// Plugin version for authentication
+// Plugin version for User-Agent header
 const PLUGIN_VERSION = '0.1.0';
 
 // Ping interval for keepalive
@@ -50,7 +49,6 @@ export class CrabCallrWebSocket extends EventEmitter {
   private pingTimeout: NodeJS.Timeout | null = null;
   private authenticated = false;
   private userId: string | null = null;
-  private activeCalls: Map<string, ActiveCall> = new Map();
   private logger: Logger;
 
   constructor(config: CrabCallrConfig, logger: Logger) {
@@ -78,13 +76,6 @@ export class CrabCallrWebSocket extends EventEmitter {
    */
   getUserId(): string | null {
     return this.userId;
-  }
-
-  /**
-   * Get active calls
-   */
-  getActiveCalls(): ActiveCall[] {
-    return Array.from(this.activeCalls.values());
   }
 
   /**
@@ -135,15 +126,14 @@ export class CrabCallrWebSocket extends EventEmitter {
 
     this.authenticated = false;
     this.userId = null;
-    this.activeCalls.clear();
     this.setStatus('disconnected');
     this.emit('disconnected', 'Client initiated disconnect');
   }
 
   /**
-   * Send a response for a transcript
+   * Send a response for a request
    */
-  sendResponse(callId: string, text: string, requestId: string): void {
+  sendResponse(requestId: string, text: string): void {
     if (!this.isConnected()) {
       this.logger.warn('[CrabCallr] Cannot send response: not connected');
       return;
@@ -151,10 +141,8 @@ export class CrabCallrWebSocket extends EventEmitter {
 
     const message: ResponseMessage = {
       type: 'response' as MessageType.RESPONSE,
-      callId,
-      text,
       requestId,
-      timestamp: Date.now(),
+      text,
     };
 
     this.send(message);
@@ -175,8 +163,6 @@ export class CrabCallrWebSocket extends EventEmitter {
     const authMessage: AuthMessage = {
       type: 'auth' as MessageType.AUTH,
       apiKey: this.config.apiKey,
-      pluginVersion: PLUGIN_VERSION,
-      timestamp: Date.now(),
     };
 
     this.send(authMessage);
@@ -193,20 +179,12 @@ export class CrabCallrWebSocket extends EventEmitter {
 
   private processMessage(message: InboundWsMessage): void {
     switch (message.type) {
-      case 'auth_response':
-        this.handleAuthResponse(message);
+      case 'auth_result':
+        this.handleAuthResult(message);
         break;
 
-      case 'transcript':
-        this.handleTranscript(message);
-        break;
-
-      case 'call_start':
-        this.handleCallStart(message);
-        break;
-
-      case 'call_end':
-        this.handleCallEnd(message);
+      case 'request':
+        this.handleRequest(message);
         break;
 
       case 'ping':
@@ -222,7 +200,7 @@ export class CrabCallrWebSocket extends EventEmitter {
     }
   }
 
-  private handleAuthResponse(message: { success: boolean; userId?: string; error?: string }): void {
+  private handleAuthResult(message: { success: boolean; userId?: string; error?: string }): void {
     if (message.success) {
       this.authenticated = true;
       this.userId = message.userId ?? null;
@@ -239,41 +217,21 @@ export class CrabCallrWebSocket extends EventEmitter {
     }
   }
 
-  private handleTranscript(message: { callId: string; text: string; isFinal: boolean; requestId?: string }): void {
-    const { callId, text, isFinal, requestId } = message;
-    this.logger.debug(`[CrabCallr] Transcript (${isFinal ? 'final' : 'interim'}): ${text}`);
-    this.emit('transcript', callId, text, isFinal, requestId);
-  }
-
-  private handleCallStart(message: { callId: string; source: 'browser' | 'phone'; callerInfo?: { phoneNumber?: string } }): void {
-    const call: ActiveCall = {
-      callId: message.callId,
-      source: message.source,
-      startTime: Date.now(),
-      callerInfo: message.callerInfo,
-    };
-    this.activeCalls.set(message.callId, call);
-    this.logger.info(`[CrabCallr] Call started: ${message.callId} (${message.source})`);
-    this.emit('callStart', call);
-  }
-
-  private handleCallEnd(message: { callId: string; reason: string; duration?: number }): void {
-    const { callId, reason, duration } = message;
-    this.activeCalls.delete(callId);
-    this.logger.info(`[CrabCallr] Call ended: ${callId} (${reason}, ${duration}ms)`);
-    this.emit('callEnd', callId, reason, duration);
+  private handleRequest(message: { requestId: string; text: string; callId: string }): void {
+    const { requestId, text, callId } = message;
+    this.logger.debug(`[CrabCallr] Request: "${text}"`);
+    this.emit('request', requestId, text, callId);
   }
 
   private handlePing(): void {
     this.logger.debug('[CrabCallr] Received ping, sending pong');
     const pong: PongMessage = {
       type: 'pong' as MessageType.PONG,
-      timestamp: Date.now(),
     };
     this.send(pong);
   }
 
-  private handleErrorMessage(message: { code: string; message: string; callId?: string }): void {
+  private handleErrorMessage(message: { code: string; message: string }): void {
     this.logger.error(`[CrabCallr] Server error: ${message.code} - ${message.message}`);
     this.emit('error', new Error(`${message.code}: ${message.message}`));
   }
