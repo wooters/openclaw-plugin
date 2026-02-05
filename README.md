@@ -57,14 +57,7 @@ openclaw plugins install @wooters/crabcallr-plugin
 Check connection status:
 
 ```bash
-openclaw crabcallr:status
-```
-
-Manually connect/disconnect:
-
-```bash
-openclaw crabcallr:connect
-openclaw crabcallr:disconnect
+openclaw channels status --probe
 ```
 
 ## How It Works
@@ -113,7 +106,7 @@ See [crabcallr.com](https://crabcallr.com) for current pricing.
 
 - Verify your API key is correct (should start with `cc_`)
 - Check that your OpenClaw Gateway can reach `ws.crabcallr.com`
-- Run `openclaw crabcallr:status` to see connection details
+- Run `openclaw channels status --probe` to see connection details
 
 ### No response from assistant
 

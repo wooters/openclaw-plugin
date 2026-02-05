@@ -6,17 +6,20 @@ import WebSocket from 'ws';
 import { EventEmitter } from 'events';
 import type {
   CrabCallrConfig,
-  ConnectionStatus,
-  MessageType,
-  InboundWsMessage,
-  OutboundWsMessage,
-  AuthMessage,
-  ResponseMessage,
-  PongMessage,
   CrabCallrEvents,
-  Logger,
-} from './types';
-import { maskApiKey } from './config';
+  CrabCallrLogger,
+  CallEndMessage,
+  CallEndRequestMessage,
+  CallStartMessage,
+  ConnectionStatus,
+  InboundWsMessage,
+  MessageType,
+  OutboundWsMessage,
+  PongMessage,
+  ResponseMessage,
+  AuthMessage,
+} from './types.js';
+import { maskApiKey } from './config.js';
 
 // Plugin version for User-Agent header
 const PLUGIN_VERSION = '0.1.0';
@@ -49,9 +52,9 @@ export class CrabCallrWebSocket extends EventEmitter {
   private pingTimeout: NodeJS.Timeout | null = null;
   private authenticated = false;
   private userId: string | null = null;
-  private logger: Logger;
+  private logger: CrabCallrLogger;
 
-  constructor(config: CrabCallrConfig, logger: Logger) {
+  constructor(config: CrabCallrConfig, logger: CrabCallrLogger) {
     super();
     this.config = config;
     this.logger = logger;
@@ -78,6 +81,10 @@ export class CrabCallrWebSocket extends EventEmitter {
     return this.userId;
   }
 
+  getReconnectAttempts(): number {
+    return this.reconnectAttempts;
+  }
+
   /**
    * Connect to the CrabCallr service
    */
@@ -102,7 +109,9 @@ export class CrabCallrWebSocket extends EventEmitter {
       this.ws.on('close', (code, reason) => this.handleClose(code, reason.toString()));
       this.ws.on('error', (error) => this.handleError(error));
     } catch (error) {
-      this.logger.error('[CrabCallr] Failed to create WebSocket connection', error);
+      this.logger.error(
+        `[CrabCallr] Failed to create WebSocket connection: ${String(error)}`,
+      );
       this.setStatus('error');
       this.scheduleReconnect();
     }
@@ -148,10 +157,28 @@ export class CrabCallrWebSocket extends EventEmitter {
     this.send(message);
   }
 
+  /**
+   * Request to end a call
+   */
+  sendCallEndRequest(callId: string): void {
+    if (!this.isConnected() || !this.userId) {
+      this.logger.warn('[CrabCallr] Cannot request call end: not connected');
+      return;
+    }
+
+    const message: CallEndRequestMessage = {
+      type: 'call_end_request' as MessageType.CALL_END_REQUEST,
+      userId: this.userId,
+      callId,
+    };
+
+    this.send(message);
+  }
+
   private setStatus(status: ConnectionStatus): void {
     if (this.status !== status) {
       this.status = status;
-      this.logger.debug(`[CrabCallr] Status changed to: ${status}`);
+    this.logger.debug?.(`[CrabCallr] Status changed to: ${status}`);
     }
   }
 
@@ -173,7 +200,7 @@ export class CrabCallrWebSocket extends EventEmitter {
       const message = JSON.parse(data.toString()) as InboundWsMessage;
       this.processMessage(message);
     } catch (error) {
-      this.logger.error('[CrabCallr] Failed to parse message', error);
+      this.logger.error(`[CrabCallr] Failed to parse message: ${String(error)}`);
     }
   }
 
@@ -189,6 +216,18 @@ export class CrabCallrWebSocket extends EventEmitter {
 
       case 'ping':
         this.handlePing();
+        break;
+
+      case 'pong':
+        this.handlePong();
+        break;
+
+      case 'call_start':
+        this.handleCallStart(message);
+        break;
+
+      case 'call_end':
+        this.handleCallEnd(message);
         break;
 
       case 'error':
@@ -219,16 +258,35 @@ export class CrabCallrWebSocket extends EventEmitter {
 
   private handleRequest(message: { requestId: string; text: string; callId: string }): void {
     const { requestId, text, callId } = message;
-    this.logger.debug(`[CrabCallr] Request: "${text}"`);
+    this.logger.debug?.(`[CrabCallr] Request: "${text}"`);
     this.emit('request', requestId, text, callId);
   }
 
   private handlePing(): void {
-    this.logger.debug('[CrabCallr] Received ping, sending pong');
+    this.logger.debug?.('[CrabCallr] Received ping, sending pong');
     const pong: PongMessage = {
       type: 'pong' as MessageType.PONG,
     };
     this.send(pong);
+  }
+
+  private handlePong(): void {
+    // Clear the ping timeout - connection is healthy
+    if (this.pingTimeout) {
+      clearTimeout(this.pingTimeout);
+      this.pingTimeout = null;
+    }
+    this.logger.debug?.('[CrabCallr] Received pong');
+  }
+
+  private handleCallStart(message: CallStartMessage): void {
+    this.logger.info(`[CrabCallr] Call started: ${message.callId} (${message.source})`);
+    this.emit('callStart', message.callId, message.source);
+  }
+
+  private handleCallEnd(message: CallEndMessage): void {
+    this.logger.info(`[CrabCallr] Call ended: ${message.callId} (duration: ${message.durationSeconds}s)`);
+    this.emit('callEnd', message.callId, message.durationSeconds, message.source, message.startedAt);
   }
 
   private handleErrorMessage(message: { code: string; message: string }): void {
@@ -255,7 +313,7 @@ export class CrabCallrWebSocket extends EventEmitter {
   }
 
   private handleError(error: Error): void {
-    this.logger.error('[CrabCallr] WebSocket error', error);
+    this.logger.error(`[CrabCallr] WebSocket error: ${String(error)}`);
     this.emit('error', error);
   }
 
@@ -268,13 +326,13 @@ export class CrabCallrWebSocket extends EventEmitter {
     try {
       // Don't log the full auth message (contains API key)
       if (message.type === 'auth') {
-        this.logger.debug(`[CrabCallr] Sending: auth (key: ${maskApiKey(this.config.apiKey)})`);
+        this.logger.debug?.(`[CrabCallr] Sending: auth (key: ${maskApiKey(this.config.apiKey)})`);
       } else {
-        this.logger.debug(`[CrabCallr] Sending: ${message.type}`);
+        this.logger.debug?.(`[CrabCallr] Sending: ${message.type}`);
       }
       this.ws.send(JSON.stringify(message));
     } catch (error) {
-      this.logger.error('[CrabCallr] Failed to send message', error);
+      this.logger.error(`[CrabCallr] Failed to send message: ${String(error)}`);
     }
   }
 
@@ -309,7 +367,7 @@ export class CrabCallrWebSocket extends EventEmitter {
     this.pingTimer = setInterval(() => {
       if (!this.isConnected()) return;
 
-      this.logger.debug('[CrabCallr] Sending ping');
+      this.logger.debug?.('[CrabCallr] Sending ping');
       const ping = { type: 'ping', timestamp: Date.now() };
       this.ws?.send(JSON.stringify(ping));
 

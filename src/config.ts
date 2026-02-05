@@ -2,7 +2,7 @@
  * Configuration handling for CrabCallr plugin
  */
 
-import type { CrabCallrConfig } from './types';
+import type { CrabCallrConfig } from './types.js';
 
 /**
  * Default configuration values

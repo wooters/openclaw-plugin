@@ -1,63 +1,13 @@
 {
   "id": "crabcallr",
-  "channel": {
-    "label": "CrabCallr Voice",
-    "docsPath": "/channels/crabcallr",
-    "blurb": "Voice calling via phone or browser",
-    "order": 100,
-    "aliases": ["voice", "phone"]
-  },
+  "name": "CrabCallr Voice",
+  "description": "Voice calling via phone or browser",
+  "version": "0.1.0",
+  "channels": ["crabcallr"],
   "configSchema": {
     "type": "object",
-    "properties": {
-      "apiKey": {
-        "type": "string",
-        "description": "Your CrabCallr API key from app.crabcallr.com"
-      },
-      "serviceUrl": {
-        "type": "string",
-        "default": "wss://api.crabcallr.com/ws",
-        "description": "CrabCallr service WebSocket URL"
-      },
-      "autoConnect": {
-        "type": "boolean",
-        "default": true,
-        "description": "Automatically connect to CrabCallr service on startup"
-      },
-      "reconnectInterval": {
-        "type": "number",
-        "default": 5000,
-        "description": "Reconnection interval in milliseconds"
-      },
-      "maxReconnectAttempts": {
-        "type": "number",
-        "default": 10,
-        "description": "Maximum number of reconnection attempts (0 for unlimited)"
-      }
-    },
-    "required": ["apiKey"]
-  },
-  "uiHints": {
-    "apiKey": {
-      "label": "CrabCallr API Key",
-      "sensitive": true,
-      "placeholder": "cc_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-    },
-    "serviceUrl": {
-      "label": "Service URL",
-      "advanced": true
-    },
-    "autoConnect": {
-      "label": "Auto-connect on startup"
-    },
-    "reconnectInterval": {
-      "label": "Reconnect interval (ms)",
-      "advanced": true
-    },
-    "maxReconnectAttempts": {
-      "label": "Max reconnect attempts",
-      "advanced": true
-    }
+    "additionalProperties": false,
+    "properties": {}
   },
   "skills": ["./skills"]
 }
