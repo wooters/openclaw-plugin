@@ -37,3 +37,64 @@ The `skills/crabcallr/SKILL.md` skill is automatically loaded when the plugin is
 ### Plugin Manifest
 
 `openclaw.plugin.json` defines the plugin ID, channel metadata (label, docsPath, blurb, aliases), skill paths, and configuration schema requiring an `apiKey` (format: `cc_*`). Config is located at `channels.crabcallr.accounts.default`.
+
+## Testing
+
+### E2E Plugin Tests (`tools/e2e-test/`)
+
+End-to-end tests that verify the plugin works against a real OpenClaw gateway. The tool starts a **mock ws-manager** (local WebSocket server), spawns an **OpenClaw gateway** with the plugin linked, and runs test scenarios validating the full connection lifecycle.
+
+**When to use:** After making changes to plugin code (WebSocket handling, auth, message routing, config). Run before committing to catch integration regressions. No external services or API keys are needed for protocol mode.
+
+**Setup:**
+
+```bash
+cd tools/e2e-test
+npm install
+```
+
+**Running tests:**
+
+```bash
+# Protocol mode — no LLM key needed, tests auth/connection/ping/call lifecycle
+npm test
+
+# Live mode — requires LLM key, tests full agent response pipeline
+ANTHROPIC_API_KEY=sk-... npm run test:live
+
+# Test against a specific OpenClaw version
+npm test -- --openclaw-version 2026.2.3-1
+
+# Run a single scenario
+npm test -- --scenario auth-connect
+
+# Verbose output (shows all ws messages and gateway logs)
+npm test -- --verbose
+```
+
+**Test scenarios:**
+
+| Scenario | Mode | What it tests |
+|----------|------|---------------|
+| `auth-connect` | protocol + live | Plugin connects, sends `cc_*` API key, stays connected |
+| `ping-pong` | protocol + live | Plugin sends keepalive pings, receives pongs |
+| `call-lifecycle` | protocol + live | call_start → request → (response in live) → call_end |
+| `multi-turn` | live only | 3 sequential requests in one call with LLM responses |
+
+**Exit codes:** `0` = all pass, `1` = test failure, `2` = setup/infra error.
+
+**How it works:** The tool creates an isolated temp `OPENCLAW_STATE_DIR`, installs OpenClaw, links the plugin, writes config pointing at `ws://localhost:19876/plugin`, and spawns `openclaw gateway`. The mock ws-manager validates the plugin's auth message, responds to pings, and sends test call/request messages. See `tools/e2e-test/src/mock-ws-manager.ts` for the protocol implementation.
+
+**Key CLI flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--openclaw-version <ver>` | `latest` | OpenClaw npm version |
+| `--live` | `false` | Enable live mode (real LLM) |
+| `--port <n>` | `19876` | Mock ws-manager port |
+| `--scenario <name>` | all | Run specific scenario(s) |
+| `--timeout <ms>` | `30000` | Per-scenario timeout |
+| `--verbose` | `false` | Verbose logging |
+| `--keep-env` | `false` | Preserve temp dir after run |
+| `--api-key-env <var>` | `ANTHROPIC_API_KEY` | Env var for LLM key |
+| `--model <id>` | `anthropic/claude-haiku-4-5-20251001` | LLM model for live mode |

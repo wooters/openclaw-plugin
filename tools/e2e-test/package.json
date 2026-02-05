@@ -1,0 +1,21 @@
+{
+  "name": "crabcallr-e2e-test",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "test": "tsx src/index.ts",
+    "test:live": "tsx src/index.ts --live",
+    "dev": "tsx src/index.ts --verbose"
+  },
+  "dependencies": {
+    "commander": "^12.0.0",
+    "ws": "^8.16.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/ws": "^8.5.10",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}
