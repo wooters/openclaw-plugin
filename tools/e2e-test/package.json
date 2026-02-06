@@ -5,7 +5,7 @@
   "scripts": {
     "build": "tsc",
     "test": "tsx src/index.ts",
-    "test:live": "tsx src/index.ts --live",
+    "test:live": "node --env-file=../../../.env -- ./node_modules/.bin/tsx src/index.ts --live",
     "dev": "tsx src/index.ts --verbose"
   },
   "dependencies": {

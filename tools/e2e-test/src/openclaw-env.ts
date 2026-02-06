@@ -28,6 +28,7 @@ export interface OpenClawEnv {
 }
 
 const E2E_API_KEY = "cc_e2e_test_0000000000000000000000";
+const E2E_GATEWAY_TOKEN = "e2e-test-token";
 
 /** Resolve the absolute path to the openclaw-plugin root (two levels up from this file's directory) */
 function pluginRoot(): string {
@@ -77,13 +78,23 @@ export async function createOpenClawEnv(opts: OpenClawEnvOptions): Promise<OpenC
     env: { ...process.env, OPENCLAW_STATE_DIR: stateDir },
   });
 
-  // 4. Write openclaw.json config
-  const configDir = path.join(stateDir, "config");
-  fs.mkdirSync(configDir, { recursive: true });
+  // 4. Merge channel + gateway config into openclaw.json
+  //    `plugins install` already wrote state/openclaw.json with plugin entries;
+  //    we merge our settings into that file so the gateway picks them up.
+  const configPath = path.join(stateDir, "openclaw.json");
+  const existingConfig: Record<string, unknown> = fs.existsSync(configPath)
+    ? JSON.parse(fs.readFileSync(configPath, "utf-8"))
+    : {};
 
   const serviceUrl = `ws://localhost:${opts.wsManagerPort}/plugin`;
 
-  const openclawConfig: Record<string, unknown> = {
+  const merged: Record<string, unknown> = {
+    ...existingConfig,
+    gateway: {
+      auth: {
+        token: E2E_GATEWAY_TOKEN,
+      },
+    },
     channels: {
       crabcallr: {
         accounts: {
@@ -107,16 +118,17 @@ export async function createOpenClawEnv(opts: OpenClawEnvOptions): Promise<OpenC
         `Live mode requires ${opts.apiKeyEnv} environment variable to be set`,
       );
     }
-    openclawConfig.llm = {
-      model: opts.model,
+    merged.agents = {
+      defaults: {
+        model: {
+          primary: opts.model,
+        },
+      },
     };
   }
 
-  fs.writeFileSync(
-    path.join(configDir, "openclaw.json"),
-    JSON.stringify(openclawConfig, null, 2),
-  );
-  log.debug(`Wrote openclaw.json to ${configDir}`);
+  fs.writeFileSync(configPath, JSON.stringify(merged, null, 2));
+  log.debug(`Wrote openclaw.json to ${stateDir}`);
 
   // 5. Write minimal AGENTS.md
   const agentsDir = path.join(stateDir, "agents");
@@ -126,11 +138,11 @@ export async function createOpenClawEnv(opts: OpenClawEnvOptions): Promise<OpenC
     "You are a test assistant. Keep responses to one sentence.\n",
   );
 
-  // 6. For live mode, write credentials
+  // 6. For live mode, write auth-profiles.json for the default agent
   if (opts.live) {
     const apiKey = process.env[opts.apiKeyEnv];
-    const credentialsDir = path.join(stateDir, "credentials");
-    fs.mkdirSync(credentialsDir, { recursive: true });
+    const agentDir = path.join(stateDir, "agents", "main", "agent");
+    fs.mkdirSync(agentDir, { recursive: true });
 
     // Determine the provider from the model string
     let providerKey = "anthropic";
@@ -138,14 +150,22 @@ export async function createOpenClawEnv(opts: OpenClawEnvOptions): Promise<OpenC
       providerKey = "openai";
     }
 
-    const credentials: Record<string, unknown> = {};
-    credentials[providerKey] = { apiKey };
+    const authStore = {
+      version: 1,
+      profiles: {
+        [providerKey]: {
+          type: "api_key",
+          provider: providerKey,
+          apiKey,
+        },
+      },
+    };
 
     fs.writeFileSync(
-      path.join(credentialsDir, "credentials.json"),
-      JSON.stringify(credentials, null, 2),
+      path.join(agentDir, "auth-profiles.json"),
+      JSON.stringify(authStore, null, 2),
     );
-    log.debug("Wrote credentials for live mode");
+    log.debug("Wrote auth-profiles for live mode");
   }
 
   return { stateDir, openclawBin, installDir };
