@@ -15,7 +15,7 @@ CrabCallr is a voice interface that lets you have natural conversations with you
 ## Installation
 
 ```bash
-openclaw plugins install @wooters/crabcallr-plugin
+openclaw plugins install @wooters/crabcallr
 ```
 
 ## Setup
@@ -95,8 +95,8 @@ The skill is automatically loaded when the plugin is enabled.
 
 ## Pricing
 
-- **Free tier** - Browser calling via WebRTC
-- **Pro tier** ($15/month) - Phone calling with 60 minutes included, $0.10/minute overage
+- **Free tier** - 30 min/month browser calling via WebRTC
+- **Basic tier** ($5/month) - 120 min browser + 30 min phone calling, $0.15/minute overage
 
 See [crabcallr.com](https://crabcallr.com) for current pricing.
 
