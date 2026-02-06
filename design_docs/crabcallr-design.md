@@ -83,7 +83,7 @@ Wake word detection ("Hey Molt") using Apple's speech recognizer. Triggers Talk 
 - Voice selection from curated list (5-10 ElevenLabs voices)
 - No phone number required
 
-### Pro Tier ($15/month)
+### Basic Tier ($5/month)
 - Everything in Free
 - Inbound phone calling via shared Twilio number
 - Caller ID routing (no PIN required)
@@ -128,7 +128,7 @@ Wake word detection ("Hey Molt") using Apple's speech recognizer. Triggers Talk 
 
 ## Data Flow
 
-### Inbound Phone Call (Pro)
+### Inbound Phone Call (Basic)
 1. User calls shared Twilio number
 2. Twilio matches caller ID to registered user
 3. Twilio routes call to LiveKit via SIP
@@ -163,14 +163,14 @@ Wake word detection ("Hey Molt") using Apple's speech recognizer. Triggers Talk 
 - **Voice pipeline:** Deepgram (STT + VAD), ElevenLabs (TTS), Krisp (noise)
 - **Websocket manager:** Maintains connections to OpenClaw skills
 - **User database:** Accounts, phone numbers, voice preferences, usage tracking
-- **Billing integration:** Stripe for Pro subscriptions and overage
+- **Billing integration:** Stripe for Basic subscriptions and overage
 
 ### Web UI (app.crabcallr.com)
 - **Auth:** Login/signup, API key generation for skill
 - **Call interface:** "Call" button, call status, end call
 - **Voice picker:** 5-10 curated ElevenLabs voices with preview
-- **Settings:** Registered phone number (Pro), account management
-- **Usage dashboard:** Minutes used, billing info (Pro)
+- **Settings:** Registered phone number (Basic), account management
+- **Usage dashboard:** Minutes used, billing info (Basic)
 
 ## Voice Pipeline Details
 
@@ -202,7 +202,7 @@ Wake word detection ("Hey Molt") using Apple's speech recognizer. Triggers Talk 
 
 ### Shared Number with Caller ID Routing
 - Single Twilio number for all users
-- User registers their phone number(s) during Pro signup
+- User registers their phone number(s) during Basic signup
 - Inbound call: lookup caller ID → find websocket → route call
 - No PIN or voice authentication required
 
@@ -227,7 +227,7 @@ Wake word detection ("Hey Molt") using Apple's speech recognizer. Triggers Talk 
 6. User opens web UI, selects voice, clicks "Call"
 7. Free tier active; user can talk to OpenClaw via browser
 8. To upgrade: enters phone number, subscribes via Stripe
-9. Pro tier active; user can now call from their phone
+9. Basic tier active; user can now call from their phone
 
 ## Error Handling
 
@@ -251,13 +251,13 @@ Wake word detection ("Hey Molt") using Apple's speech recognizer. Triggers Talk 
 ### Service Overload
 - If too many concurrent calls:
   - Free tier: "All lines are busy, please try again later"
-  - Pro tier: Prioritize, queue briefly, then same message
+  - Basic tier: Prioritize, queue briefly, then same message
 
 ## MVP Scope Summary
 
 ### In Scope
 - Browser calling via WebRTC (Free tier)
-- Inbound phone calling via shared Twilio number (Pro tier)
+- Inbound phone calling via shared Twilio number (Basic tier)
 - Caller ID routing
 - LiveKit Agents for realtime audio
 - Deepgram STT with VAD
@@ -266,7 +266,7 @@ Wake word detection ("Hey Molt") using Apple's speech recognizer. Triggers Talk 
 - Barge-in support
 - Web UI: auth, call button, voice picker, settings
 - OpenClaw skill (open source)
-- Stripe billing for Pro tier
+- Stripe billing for Basic tier
 
 ### Out of Scope (Future)
 - Outbound calling
@@ -577,7 +577,7 @@ web/
 
 - **Adoption:** Number of OpenClaw users who install the skill
 - **Activation:** % who make at least one call
-- **Conversion:** % of Free users who upgrade to Pro
+- **Conversion:** % of Free users who upgrade to Basic
 - **Retention:** Monthly active callers
 - **Usage:** Average minutes per user per month
 - **NPS:** User satisfaction with call quality

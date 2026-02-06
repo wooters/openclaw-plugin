@@ -7,7 +7,7 @@ Talk to your OpenClaw assistant via phone or browser with CrabCallr.
 CrabCallr is a voice interface that lets you have natural conversations with your OpenClaw assistant. This plugin connects your OpenClaw instance to the CrabCallr hosted service, enabling:
 
 - **Browser calling** - Talk to OpenClaw from any web browser via WebRTC
-- **Phone calling** - Call a phone number to reach your assistant (Pro tier)
+- **Phone calling** - Call a phone number to reach your assistant (Basic tier)
 - **Streaming speech recognition** - Real-time transcription with Deepgram
 - **Natural voice responses** - High-quality text-to-speech with ElevenLabs
 - **Barge-in support** - Interrupt the assistant mid-response
