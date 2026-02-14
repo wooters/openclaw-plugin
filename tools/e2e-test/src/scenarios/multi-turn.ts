@@ -36,13 +36,26 @@ export function createMultiTurnScenario(mock: MockWsManager): TestScenario {
         await new Promise((resolve) => setTimeout(resolve, 500));
 
         // Send each request and wait for response
+        const lastPromptId = PROMPTS[PROMPTS.length - 1].id;
         for (const prompt of PROMPTS) {
           mock.clearReceivedMessages();
           mock.sendRequest(prompt.id, prompt.text, callId);
 
+          // The last prompt ("goodbye") may trigger crabcallr_end_call, which
+          // routes the farewell through speak(endCall=true) instead of response.
+          // Accept either outcome for the final prompt.
+          const isLast = prompt.id === lastPromptId;
+
           let response;
           try {
-            response = await mock.waitForResponse(prompt.id, ctx.timeout);
+            if (isLast) {
+              response = await Promise.race([
+                mock.waitForResponse(prompt.id, ctx.timeout),
+                mock.waitForMessage("speak", ctx.timeout),
+              ]);
+            } else {
+              response = await mock.waitForResponse(prompt.id, ctx.timeout);
+            }
           } catch (err) {
             return {
               name: "multi-turn",
@@ -51,6 +64,21 @@ export function createMultiTurnScenario(mock: MockWsManager): TestScenario {
               duration: Date.now() - start,
               error: `No response for "${prompt.text}": ${String(err)}`,
             };
+          }
+
+          // speak(endCall=true) is acceptable for the goodbye prompt
+          if (isLast && response.type === "speak") {
+            if (!("text" in response) || !response.text.trim()) {
+              return {
+                name: "multi-turn",
+                passed: false,
+                skipped: false,
+                duration: Date.now() - start,
+                error: `Empty speak text for "${prompt.text}"`,
+              };
+            }
+            // Agent-initiated end call — skip remaining validation
+            continue;
           }
 
           if (response.type !== "response" || !("requestId" in response)) {

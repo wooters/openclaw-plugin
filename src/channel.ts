@@ -41,6 +41,7 @@ type CallState = {
   fillerTimer: NodeJS.Timeout | null;
   fillerCount: number;
   fillerPhraseIndex: number;
+  endCallRequested: boolean;
 };
 
 type CrabCallrConnection = {
@@ -64,6 +65,7 @@ function createCallState(callId: string): CallState {
     fillerTimer: null,
     fillerCount: 0,
     fillerPhraseIndex: 0,
+    endCallRequested: false,
   };
 }
 
@@ -356,12 +358,13 @@ async function handleRequest(params: {
   text: string;
   callId: string;
   ws: CrabCallrWebSocket;
+  callStates: Map<string, CallState>;
   statusSink?: (patch: Partial<ChannelAccountSnapshot>) => void;
   logError: (message: string) => void;
   onComplete?: () => void;
   onError?: () => void;
 }) {
-  const { cfg, accountId, requestId, text, callId, ws, statusSink, logError, onComplete, onError } = params;
+  const { cfg, accountId, requestId, text, callId, ws, callStates, statusSink, logError, onComplete, onError } = params;
   const core = getCrabCallrRuntime();
   const route = core.channel.routing.resolveAgentRoute({
     cfg,
@@ -439,6 +442,22 @@ async function handleRequest(params: {
           return;
         }
         const replyText = payload.text?.trim();
+
+        // Check if agent requested call end (via crabcallr_end_call tool)
+        const state = callStates.get(callId);
+        if (state?.endCallRequested) {
+          if (replyText) {
+            // Route goodbye through speak(endCall=true) — voice agent speaks it, then terminates
+            ws.sendSpeak(callId, replyText, true);
+          } else {
+            // No goodbye text — silent hangup via call_end_request
+            ws.sendCallEndRequest(callId);
+          }
+          statusSink?.({ lastOutboundAt: Date.now() });
+          onComplete?.();
+          return;
+        }
+
         if (!replyText) {
           return;
         }
@@ -448,6 +467,13 @@ async function handleRequest(params: {
       },
       onError: (err: unknown, info: { kind: "tool" | "block" | "final" }) => {
         logError(`[CrabCallr] ${info.kind} reply failed: ${String(err)}`);
+        // If end-call was requested but LLM errored, still terminate
+        if (info.kind === "final") {
+          const state = callStates.get(callId);
+          if (state?.endCallRequested) {
+            ws.sendCallEndRequest(callId);
+          }
+        }
         onError?.();
       },
     },
@@ -507,6 +533,28 @@ export function sendCrabCallrResponse(params: {
   }
   record.ws.sendResponse(params.requestId, params.text);
   record.statusSink?.({ lastOutboundAt: Date.now() });
+  return { ok: true };
+}
+
+export function endCrabCallrCall(params?: {
+  accountId?: string;
+}): { ok: boolean; error?: string } {
+  const resolvedId = normalizeAccountId(params?.accountId ?? DEFAULT_ACCOUNT_ID);
+  const record = connections.get(resolvedId);
+  if (!record) {
+    return { ok: false, error: "CrabCallr connection not running" };
+  }
+  if (!record.ws.isConnected()) {
+    return { ok: false, error: "CrabCallr is not connected" };
+  }
+  const activeStates = [...record.callStates.values()];
+  if (activeStates.length === 0) {
+    return { ok: false, error: "No active call to end" };
+  }
+  if (activeStates.length > 1) {
+    return { ok: false, error: "Multiple active calls — cannot determine which to end" };
+  }
+  activeStates[0].endCallRequested = true;
   return { ok: true };
 }
 
@@ -661,6 +709,7 @@ export const crabcallrPlugin: ChannelPlugin<ResolvedCrabCallrAccount> = {
           text,
           callId,
           ws,
+          callStates,
           statusSink,
           logError: (message) => logger.error(message),
           onComplete: () => {

@@ -10,6 +10,7 @@ import type { GatewayRequestHandlerOptions, OpenClawPluginApi } from "openclaw/p
 import { emptyPluginConfigSchema } from "openclaw/plugin-sdk";
 import {
   crabcallrPlugin,
+  endCrabCallrCall,
   getCrabCallrStatus,
   sendCrabCallrResponse,
 } from "./channel.js";
@@ -39,6 +40,33 @@ const plugin = {
         return {
           content: [{ type: "text", text: JSON.stringify(status, null, 2) }],
           details: status,
+        };
+      },
+    });
+
+    api.registerTool({
+      name: "crabcallr_end_call",
+      label: "End Call",
+      description:
+        "End the current voice call. Your response will be spoken as the farewell message before the call disconnects.",
+      parameters: Type.Object({}),
+      async execute(_toolCallId: string, _params: Record<string, unknown>) {
+        const result = endCrabCallrCall();
+        if (!result.ok) {
+          return {
+            content: [{ type: "text", text: result.error ?? "Failed to end call" }],
+            details: result,
+            isError: true,
+          };
+        }
+        return {
+          content: [
+            {
+              type: "text",
+              text: "Call end confirmed. Your response will be spoken as the farewell.",
+            },
+          ],
+          details: result,
         };
       },
     });
