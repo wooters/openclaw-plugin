@@ -8,6 +8,22 @@
 // Configuration Types
 // =============================================================================
 
+export type FillerConfig = {
+  enabled?: boolean;
+  phrases?: string[];
+  initialDelaySec?: number;
+  intervalSec?: number;
+  maxPerRequest?: number;
+};
+
+export type IdleConfig = {
+  enabled?: boolean;
+  timeoutSec?: number;
+  prompt?: string;
+  maxPrompts?: number;
+  endMessage?: string;
+};
+
 export type CrabCallrAccountConfig = {
   name?: string;
   enabled?: boolean;
@@ -16,10 +32,28 @@ export type CrabCallrAccountConfig = {
   autoConnect?: boolean;
   reconnectInterval?: number;
   maxReconnectAttempts?: number;
+  fillers?: FillerConfig;
+  idle?: IdleConfig;
 };
 
 export type CrabCallrChannelConfig = CrabCallrAccountConfig & {
   accounts?: Record<string, CrabCallrAccountConfig>;
+};
+
+export type ResolvedFillerConfig = {
+  enabled: boolean;
+  phrases: string[];
+  initialDelaySec: number;
+  intervalSec: number;
+  maxPerRequest: number;
+};
+
+export type ResolvedIdleConfig = {
+  enabled: boolean;
+  timeoutSec: number;
+  prompt: string;
+  maxPrompts: number;
+  endMessage: string;
 };
 
 export type CrabCallrConfig = {
@@ -28,6 +62,8 @@ export type CrabCallrConfig = {
   autoConnect: boolean;
   reconnectInterval: number;
   maxReconnectAttempts: number;
+  fillers: ResolvedFillerConfig;
+  idle: ResolvedIdleConfig;
 };
 
 export type CrabCallrLogger = {
@@ -61,6 +97,8 @@ export enum MessageType {
   CALL_START = "call_start",
   CALL_END = "call_end",
   CALL_END_REQUEST = "call_end_request",
+  FILLER = "filler",
+  SPEAK = "speak",
 }
 
 export interface BaseMessage {
@@ -126,6 +164,20 @@ export interface CallEndRequestMessage {
   callId: string;
 }
 
+export interface FillerMessage {
+  type: MessageType.FILLER;
+  requestId: string;
+  text: string;
+}
+
+export interface SpeakMessage {
+  type: MessageType.SPEAK;
+  userId: string;
+  callId: string;
+  text: string;
+  endCall?: boolean;
+}
+
 export type InboundWsMessage =
   | AuthResultMessage
   | RequestMessage
@@ -139,6 +191,8 @@ export type OutboundWsMessage =
   | AuthMessage
   | ResponseMessage
   | CallEndRequestMessage
+  | FillerMessage
+  | SpeakMessage
   | PingMessage
   | PongMessage;
 

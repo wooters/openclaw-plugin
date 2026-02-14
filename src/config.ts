@@ -2,7 +2,37 @@
  * Configuration handling for CrabCallr plugin
  */
 
-import type { CrabCallrConfig } from './types.js';
+import type { CrabCallrConfig, FillerConfig, IdleConfig, ResolvedFillerConfig, ResolvedIdleConfig } from './types.js';
+
+/**
+ * Input type for validateConfig — uses optional (unresolved) sub-configs
+ */
+type ValidateConfigInput = Omit<Partial<CrabCallrConfig>, 'fillers' | 'idle'> & {
+  fillers?: FillerConfig;
+  idle?: IdleConfig;
+};
+
+/**
+ * Default filler configuration
+ */
+export const DEFAULT_FILLER_CONFIG: ResolvedFillerConfig = {
+  enabled: true,
+  phrases: ['Working on that...', 'Still thinking...', 'Bear with me...'],
+  initialDelaySec: 3,
+  intervalSec: 6,
+  maxPerRequest: 3,
+};
+
+/**
+ * Default idle detection configuration
+ */
+export const DEFAULT_IDLE_CONFIG: ResolvedIdleConfig = {
+  enabled: true,
+  timeoutSec: 60,
+  prompt: 'Are you still there?',
+  maxPrompts: 2,
+  endMessage: "It seems like you've stepped away. Goodbye!",
+};
 
 /**
  * Default configuration values
@@ -12,12 +42,14 @@ export const DEFAULT_CONFIG: Omit<CrabCallrConfig, 'apiKey'> = {
   autoConnect: true,
   reconnectInterval: 5000,
   maxReconnectAttempts: 10,
+  fillers: DEFAULT_FILLER_CONFIG,
+  idle: DEFAULT_IDLE_CONFIG,
 };
 
 /**
  * Validates and normalizes plugin configuration
  */
-export function validateConfig(config: Partial<CrabCallrConfig>): CrabCallrConfig {
+export function validateConfig(config: ValidateConfigInput): CrabCallrConfig {
   if (!config.apiKey) {
     throw new Error(
       'CrabCallr API key is required. Get one at https://app.crabcallr.com'
@@ -49,13 +81,62 @@ export function validateConfig(config: Partial<CrabCallrConfig>): CrabCallrConfi
     throw new Error('Max reconnect attempts cannot be negative');
   }
 
+  // Resolve filler config
+  const fillers = resolveFillerConfig(config.fillers);
+
+  // Resolve idle config
+  const idle = resolveIdleConfig(config.idle);
+
   return {
     apiKey: config.apiKey,
     serviceUrl,
     autoConnect: config.autoConnect ?? DEFAULT_CONFIG.autoConnect,
     reconnectInterval,
     maxReconnectAttempts,
+    fillers,
+    idle,
   };
+}
+
+function resolveFillerConfig(input?: Partial<ResolvedFillerConfig>): ResolvedFillerConfig {
+  const config: ResolvedFillerConfig = {
+    enabled: input?.enabled ?? DEFAULT_FILLER_CONFIG.enabled,
+    phrases: input?.phrases ?? DEFAULT_FILLER_CONFIG.phrases,
+    initialDelaySec: input?.initialDelaySec ?? DEFAULT_FILLER_CONFIG.initialDelaySec,
+    intervalSec: input?.intervalSec ?? DEFAULT_FILLER_CONFIG.intervalSec,
+    maxPerRequest: input?.maxPerRequest ?? DEFAULT_FILLER_CONFIG.maxPerRequest,
+  };
+
+  if (config.initialDelaySec <= 0) {
+    throw new Error('fillers.initialDelaySec must be greater than 0');
+  }
+  if (config.intervalSec <= 0) {
+    throw new Error('fillers.intervalSec must be greater than 0');
+  }
+  if (config.maxPerRequest < 0) {
+    throw new Error('fillers.maxPerRequest cannot be negative');
+  }
+
+  return config;
+}
+
+function resolveIdleConfig(input?: Partial<ResolvedIdleConfig>): ResolvedIdleConfig {
+  const config: ResolvedIdleConfig = {
+    enabled: input?.enabled ?? DEFAULT_IDLE_CONFIG.enabled,
+    timeoutSec: input?.timeoutSec ?? DEFAULT_IDLE_CONFIG.timeoutSec,
+    prompt: input?.prompt ?? DEFAULT_IDLE_CONFIG.prompt,
+    maxPrompts: input?.maxPrompts ?? DEFAULT_IDLE_CONFIG.maxPrompts,
+    endMessage: input?.endMessage ?? DEFAULT_IDLE_CONFIG.endMessage,
+  };
+
+  if (config.timeoutSec <= 0) {
+    throw new Error('idle.timeoutSec must be greater than 0');
+  }
+  if (config.maxPrompts < 0) {
+    throw new Error('idle.maxPrompts cannot be negative');
+  }
+
+  return config;
 }
 
 /**

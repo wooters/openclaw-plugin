@@ -23,6 +23,20 @@ export interface CallEndRequestMessage {
   callId: string;
 }
 
+export interface FillerMessage {
+  type: "filler";
+  requestId: string;
+  text: string;
+}
+
+export interface SpeakMessage {
+  type: "speak";
+  userId: string;
+  callId: string;
+  text: string;
+  endCall?: boolean;
+}
+
 export interface PluginPingMessage {
   type: "ping";
 }
@@ -31,6 +45,8 @@ export type PluginToManagerMessage =
   | AuthMessage
   | ResponseMessage
   | CallEndRequestMessage
+  | FillerMessage
+  | SpeakMessage
   | PluginPingMessage;
 
 // ---- Messages from manager to plugin (what the mock ws-manager sends) ----

@@ -111,6 +111,20 @@ export class MockWsManager extends EventEmitter {
             return;
           }
 
+          // Handle filler from plugin (just log and notify waiters)
+          if (message.type === "filler") {
+            log.debug(`Mock ws-manager: received filler for ${message.requestId}: "${message.text}"`);
+            this.notifyWaiters(message);
+            return;
+          }
+
+          // Handle speak from plugin (just log and notify waiters)
+          if (message.type === "speak") {
+            log.debug(`Mock ws-manager: received speak for ${message.callId}: "${message.text}" (endCall=${message.endCall ?? false})`);
+            this.notifyWaiters(message);
+            return;
+          }
+
           // Notify any waiters
           this.notifyWaiters(message);
         });

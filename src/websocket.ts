@@ -12,11 +12,13 @@ import type {
   CallEndRequestMessage,
   CallStartMessage,
   ConnectionStatus,
+  FillerMessage,
   InboundWsMessage,
   MessageType,
   OutboundWsMessage,
   PongMessage,
   ResponseMessage,
+  SpeakMessage,
   AuthMessage,
 } from './types.js';
 import { maskApiKey } from './config.js';
@@ -170,6 +172,44 @@ export class CrabCallrWebSocket extends EventEmitter {
       type: 'call_end_request' as MessageType.CALL_END_REQUEST,
       userId: this.userId,
       callId,
+    };
+
+    this.send(message);
+  }
+
+  /**
+   * Send a filler phrase for a pending request
+   */
+  sendFiller(requestId: string, text: string): void {
+    if (!this.isConnected()) {
+      this.logger.warn('[CrabCallr] Cannot send filler: not connected');
+      return;
+    }
+
+    const message: FillerMessage = {
+      type: 'filler' as MessageType.FILLER,
+      requestId,
+      text,
+    };
+
+    this.send(message);
+  }
+
+  /**
+   * Send unprompted speech (idle prompt, goodbye)
+   */
+  sendSpeak(callId: string, text: string, endCall?: boolean): void {
+    if (!this.isConnected() || !this.userId) {
+      this.logger.warn('[CrabCallr] Cannot send speak: not connected');
+      return;
+    }
+
+    const message: SpeakMessage = {
+      type: 'speak' as MessageType.SPEAK,
+      userId: this.userId,
+      callId,
+      text,
+      ...(endCall ? { endCall } : {}),
     };
 
     this.send(message);
