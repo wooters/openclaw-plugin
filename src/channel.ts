@@ -141,6 +141,8 @@ function startIdleCheckInterval(
   state.idleCheckInterval = setInterval(() => {
     // Don't prompt while a request is in-flight
     if (state.currentRequestId !== null) return;
+    // Don't prompt if call end was already requested
+    if (state.endCallRequested) return;
 
     const elapsed = Date.now() - state.lastActivityAt;
     if (elapsed < config.idle.timeoutSec * 1000) return;
