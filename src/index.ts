@@ -4,6 +4,7 @@
  * Voice calling via phone or browser through the CrabCallr service.
  */
 
+import { createRequire } from "module";
 import { Type } from "@sinclair/typebox";
 import type { GatewayRequestHandlerOptions, OpenClawPluginApi } from "openclaw/plugin-sdk";
 import { emptyPluginConfigSchema } from "openclaw/plugin-sdk";
@@ -14,7 +15,8 @@ import {
 } from "./channel.js";
 import { setCrabCallrRuntime } from "./runtime.js";
 
-const PLUGIN_VERSION = "0.1.0";
+const require = createRequire(import.meta.url);
+const { version: PLUGIN_VERSION } = require("../package.json") as { version: string };
 
 const plugin = {
   id: "crabcallr",
