@@ -32,6 +32,7 @@ export type CrabCallrAccountConfig = {
   autoConnect?: boolean;
   reconnectInterval?: number;
   maxReconnectAttempts?: number;
+  requestTimeoutSec?: number;
   fillers?: FillerConfig;
   idle?: IdleConfig;
 };
@@ -62,6 +63,7 @@ export type CrabCallrConfig = {
   autoConnect: boolean;
   reconnectInterval: number;
   maxReconnectAttempts: number;
+  requestTimeoutSec: number;
   fillers: ResolvedFillerConfig;
   idle: ResolvedIdleConfig;
 };

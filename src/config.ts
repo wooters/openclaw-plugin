@@ -42,6 +42,7 @@ export const DEFAULT_CONFIG: Omit<CrabCallrConfig, 'apiKey'> = {
   autoConnect: true,
   reconnectInterval: 5000,
   maxReconnectAttempts: 10,
+  requestTimeoutSec: 25,
   fillers: DEFAULT_FILLER_CONFIG,
   idle: DEFAULT_IDLE_CONFIG,
 };
@@ -81,6 +82,11 @@ export function validateConfig(config: ValidateConfigInput): CrabCallrConfig {
     throw new Error('Max reconnect attempts cannot be negative');
   }
 
+  const requestTimeoutSec = config.requestTimeoutSec ?? DEFAULT_CONFIG.requestTimeoutSec;
+  if (requestTimeoutSec < 5) {
+    throw new Error('requestTimeoutSec must be at least 5');
+  }
+
   // Resolve filler config
   const fillers = resolveFillerConfig(config.fillers);
 
@@ -93,6 +99,7 @@ export function validateConfig(config: ValidateConfigInput): CrabCallrConfig {
     autoConnect: config.autoConnect ?? DEFAULT_CONFIG.autoConnect,
     reconnectInterval,
     maxReconnectAttempts,
+    requestTimeoutSec,
     fillers,
     idle,
   };

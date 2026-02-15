@@ -219,6 +219,12 @@ const CrabCallrAccountSchema = Type.Object(
         default: 10,
       }),
     ),
+    requestTimeoutSec: Type.Optional(
+      Type.Number({
+        description: "Timeout in seconds for each request to the LLM (default: 25)",
+        default: 25,
+      }),
+    ),
     fillers: Type.Optional(FillerConfigSchema),
     idle: Type.Optional(IdleConfigSchema),
   },
@@ -361,12 +367,14 @@ async function handleRequest(params: {
   callId: string;
   ws: CrabCallrWebSocket;
   callStates: Map<string, CallState>;
+  config: CrabCallrConfig;
   statusSink?: (patch: Partial<ChannelAccountSnapshot>) => void;
   logError: (message: string) => void;
   onComplete?: () => void;
   onError?: () => void;
+  responseSent: { value: boolean };
 }) {
-  const { cfg, accountId, requestId, text, callId, ws, callStates, statusSink, logError, onComplete, onError } = params;
+  const { cfg, accountId, requestId, text, callId, ws, callStates, config: pluginConfig, statusSink, logError, onComplete, onError, responseSent } = params;
   const core = getCrabCallrRuntime();
   const route = core.channel.routing.resolveAgentRoute({
     cfg,
@@ -431,7 +439,12 @@ async function handleRequest(params: {
     accountId: route.accountId,
   });
 
-  await core.channel.reply.dispatchReplyWithBufferedBlockDispatcher({
+  const timeoutMs = pluginConfig.requestTimeoutSec * 1000;
+  const timeoutPromise = new Promise<"timeout">((resolve) =>
+    setTimeout(() => resolve("timeout"), timeoutMs),
+  );
+
+  const dispatchPromise = core.channel.reply.dispatchReplyWithBufferedBlockDispatcher({
     ctx: ctxPayload,
     cfg,
     dispatcherOptions: {
@@ -448,12 +461,15 @@ async function handleRequest(params: {
         // Check if agent requested call end (via crabcallr_end_call tool)
         const state = callStates.get(callId);
         if (state?.endCallRequested) {
-          if (replyText) {
-            // Route goodbye through speak(endCall=true) — voice agent speaks it, then terminates
-            ws.sendSpeak(callId, replyText, true);
-          } else {
-            // No goodbye text — silent hangup via call_end_request
-            ws.sendCallEndRequest(callId);
+          if (!responseSent.value) {
+            responseSent.value = true;
+            if (replyText) {
+              // Route goodbye through speak(endCall=true) — voice agent speaks it, then terminates
+              ws.sendSpeak(callId, replyText, true);
+            } else {
+              // No goodbye text — silent hangup via call_end_request
+              ws.sendCallEndRequest(callId);
+            }
           }
           statusSink?.({ lastOutboundAt: Date.now() });
           onComplete?.();
@@ -461,19 +477,29 @@ async function handleRequest(params: {
         }
 
         if (!replyText) {
+          if (!responseSent.value) {
+            responseSent.value = true;
+            ws.sendResponse(requestId, "I didn't get a response. Could you say that again?");
+          }
+          onComplete?.();
           return;
         }
-        ws.sendResponse(requestId, replyText);
-        statusSink?.({ lastOutboundAt: Date.now() });
+        if (!responseSent.value) {
+          responseSent.value = true;
+          ws.sendResponse(requestId, replyText);
+          statusSink?.({ lastOutboundAt: Date.now() });
+        }
         onComplete?.();
       },
       onError: (err: unknown, info: { kind: "tool" | "block" | "final" }) => {
         logError(`[CrabCallr] ${info.kind} reply failed: ${String(err)}`);
-        // If end-call was requested but LLM errored, still terminate
-        if (info.kind === "final") {
+        if (info.kind === "final" && !responseSent.value) {
+          responseSent.value = true;
           const state = callStates.get(callId);
           if (state?.endCallRequested) {
             ws.sendCallEndRequest(callId);
+          } else {
+            ws.sendResponse(requestId, "I'm sorry, I encountered an error. Could you try again?");
           }
         }
         onError?.();
@@ -484,6 +510,17 @@ async function handleRequest(params: {
       disableBlockStreaming: true,
     },
   });
+
+  const result = await Promise.race([
+    dispatchPromise.then(() => "done" as const),
+    timeoutPromise,
+  ]);
+  if (result === "timeout" && !responseSent.value) {
+    responseSent.value = true;
+    logError(`[CrabCallr] Request ${requestId} timed out after ${pluginConfig.requestTimeoutSec}s`);
+    ws.sendResponse(requestId, "I'm sorry, that request took too long. Could you try again?");
+    onComplete?.();
+  }
 }
 
 function getConnection(accountId: string): CrabCallrConnection | undefined {
@@ -613,6 +650,7 @@ export const crabcallrPlugin: ChannelPlugin<ResolvedCrabCallrAccount> = {
           autoConnect: account.config.autoConnect,
           reconnectInterval: account.config.reconnectInterval,
           maxReconnectAttempts: account.config.maxReconnectAttempts,
+          requestTimeoutSec: account.config.requestTimeoutSec,
           fillers: account.config.fillers,
           idle: account.config.idle,
         });
@@ -704,6 +742,10 @@ export const crabcallrPlugin: ChannelPlugin<ResolvedCrabCallrAccount> = {
         state.currentRequestId = requestId;
         startFillerTimer(state, config, ws, logger);
 
+        // Shared flag: every request must produce exactly one outbound response.
+        // Guards against double-send across success, error, and timeout paths.
+        const responseSent = { value: false };
+
         handleRequest({
           cfg: ctx.cfg,
           accountId: account.accountId,
@@ -712,6 +754,7 @@ export const crabcallrPlugin: ChannelPlugin<ResolvedCrabCallrAccount> = {
           callId,
           ws,
           callStates,
+          config,
           statusSink,
           logError: (message) => logger.error(message),
           onComplete: () => {
@@ -729,9 +772,13 @@ export const crabcallrPlugin: ChannelPlugin<ResolvedCrabCallrAccount> = {
               clearFillerTimer(s);
             }
           },
+          responseSent,
         }).catch((err) => {
           logger.error(`[CrabCallr] Failed to handle request: ${String(err)}`);
-          // Clear filler timer on unhandled error
+          if (!responseSent.value) {
+            responseSent.value = true;
+            ws.sendResponse(requestId, "I'm sorry, I encountered an error. Could you try again?");
+          }
           const s = callStates.get(callId);
           if (s) {
             clearFillerTimer(s);
