@@ -8,6 +8,7 @@ import { createAuthConnectScenario } from "./auth-connect.js";
 import { createPingPongScenario } from "./ping-pong.js";
 import { createCallLifecycleScenario } from "./call-lifecycle.js";
 import { createMultiTurnScenario } from "./multi-turn.js";
+import { createAgentEndCallScenario } from "./agent-end-call.js";
 
 export function createAllScenarios(mock: MockWsManager): TestScenario[] {
   return [
@@ -15,5 +16,6 @@ export function createAllScenarios(mock: MockWsManager): TestScenario[] {
     createPingPongScenario(mock),
     createCallLifecycleScenario(mock),
     createMultiTurnScenario(mock),
+    createAgentEndCallScenario(mock),
   ];
 }

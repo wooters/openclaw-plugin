@@ -80,6 +80,7 @@ npm test -- --verbose
 | `ping-pong` | protocol + live | Plugin sends keepalive pings, receives pongs |
 | `call-lifecycle` | protocol + live | call_start → request → (response in live) → call_end |
 | `multi-turn` | live only | 3 sequential requests in one call with LLM responses |
+| `agent-end-call` | live only | Agent calls crabcallr_end_call tool → speak(endCall=true) or call_end_request |
 
 **Exit codes:** `0` = all pass, `1` = test failure, `2` = setup/infra error.
 
