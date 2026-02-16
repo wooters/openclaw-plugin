@@ -107,6 +107,7 @@ export interface BaseMessage {
 export interface AuthMessage {
   type: MessageType.AUTH;
   apiKey: string;
+  ts: number;
 }
 
 export interface AuthResultMessage {
@@ -114,6 +115,7 @@ export interface AuthResultMessage {
   success: boolean;
   userId?: string;
   error?: string;
+  ts: number;
 }
 
 export interface UserMessageMessage {
@@ -121,6 +123,7 @@ export interface UserMessageMessage {
   messageId: string;
   text: string;
   callId: string;
+  ts: number;
 }
 
 export interface UtteranceMessage {
@@ -129,20 +132,24 @@ export interface UtteranceMessage {
   callId: string;
   text: string;
   endCall?: boolean;
+  ts: number;
 }
 
 export interface PingMessage {
   type: MessageType.PING;
+  ts: number;
 }
 
 export interface PongMessage {
   type: MessageType.PONG;
+  ts: number;
 }
 
 export interface CallStartMessage {
   type: MessageType.CALL_START;
   callId: string;
   source: CallSource;
+  ts: number;
 }
 
 export interface CallEndMessage {
@@ -151,12 +158,14 @@ export interface CallEndMessage {
   durationSeconds: number;
   source: CallSource;
   startedAt: number;
+  ts: number;
 }
 
 export interface CallEndRequestMessage {
   type: MessageType.CALL_END_REQUEST;
   userId: string;
   callId: string;
+  ts: number;
 }
 
 export type InboundWsMessage =

@@ -9,6 +9,7 @@ export type CallSource = "browser" | "phone";
 export interface AuthMessage {
   type: "auth";
   apiKey: string;
+  ts: number;
 }
 
 export interface UtteranceMessage {
@@ -17,16 +18,19 @@ export interface UtteranceMessage {
   callId: string;
   text: string;
   endCall?: boolean;
+  ts: number;
 }
 
 export interface CallEndRequestMessage {
   type: "call_end_request";
   userId: string;
   callId: string;
+  ts: number;
 }
 
 export interface PluginPingMessage {
   type: "ping";
+  ts: number;
 }
 
 export type PluginToManagerMessage =
@@ -42,6 +46,7 @@ export interface AuthResultMessage {
   success: boolean;
   userId?: string;
   error?: string;
+  ts: number;
 }
 
 export interface UserMessageMessage {
@@ -49,12 +54,14 @@ export interface UserMessageMessage {
   messageId: string;
   text: string;
   callId: string;
+  ts: number;
 }
 
 export interface CallStartMessage {
   type: "call_start";
   callId: string;
   source: CallSource;
+  ts: number;
 }
 
 export interface CallEndMessage {
@@ -63,10 +70,12 @@ export interface CallEndMessage {
   durationSeconds: number;
   source: CallSource;
   startedAt: number;
+  ts: number;
 }
 
 export interface PongMessage {
   type: "pong";
+  ts: number;
 }
 
 export type ManagerToPluginMessage =

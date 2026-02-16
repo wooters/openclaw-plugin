@@ -114,6 +114,7 @@ export class MockWsManager extends EventEmitter {
                 type: "auth_result",
                 success: true,
                 userId: "e2e-test-user",
+                ts: Date.now(),
               });
               log.debug("Mock ws-manager: plugin authenticated");
               this.emit("authenticated");
@@ -128,6 +129,7 @@ export class MockWsManager extends EventEmitter {
                 type: "auth_result",
                 success: false,
                 error: "Invalid API key format",
+                ts: Date.now(),
               });
               ws.close(4003, "Authentication failed");
             }
@@ -137,7 +139,7 @@ export class MockWsManager extends EventEmitter {
 
           // Handle ping from plugin
           if (message.type === "ping") {
-            this.sendToPlugin({ type: "pong" });
+            this.sendToPlugin({ type: "pong", ts: Date.now() });
             this.notifyWaiters(message);
             return;
           }
@@ -233,11 +235,11 @@ export class MockWsManager extends EventEmitter {
   }
 
   sendCallStart(callId: string, source: CallSource): void {
-    this.sendToPlugin({ type: "call_start", callId, source });
+    this.sendToPlugin({ type: "call_start", callId, source, ts: Date.now() });
   }
 
   sendUserMessage(messageId: string, text: string, callId: string): void {
-    this.sendToPlugin({ type: "user_message", messageId, text, callId });
+    this.sendToPlugin({ type: "user_message", messageId, text, callId, ts: Date.now() });
   }
 
   sendCallEnd(callId: string, durationSeconds: number, source: CallSource): void {
@@ -247,11 +249,12 @@ export class MockWsManager extends EventEmitter {
       durationSeconds,
       source,
       startedAt: Date.now() - durationSeconds * 1000,
+      ts: Date.now(),
     });
   }
 
   sendPing(): void {
-    this.sendToPlugin({ type: "pong" });
+    this.sendToPlugin({ type: "pong", ts: Date.now() });
   }
 
   waitForMessage(type: string, timeoutMs: number): Promise<PluginToManagerMessage> {

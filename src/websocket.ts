@@ -154,6 +154,7 @@ export class CrabCallrWebSocket extends EventEmitter {
       callId,
       text,
       ...(endCall ? { endCall } : {}),
+      ts: Date.now(),
     };
 
     this.send(message);
@@ -172,6 +173,7 @@ export class CrabCallrWebSocket extends EventEmitter {
       type: 'call_end_request' as MessageType.CALL_END_REQUEST,
       userId: this.userId,
       callId,
+      ts: Date.now(),
     };
 
     this.send(message);
@@ -192,6 +194,7 @@ export class CrabCallrWebSocket extends EventEmitter {
     const authMessage: AuthMessage = {
       type: 'auth' as MessageType.AUTH,
       apiKey: this.config.apiKey,
+      ts: Date.now(),
     };
 
     this.send(authMessage);
@@ -264,6 +267,7 @@ export class CrabCallrWebSocket extends EventEmitter {
     this.logger.debug?.('[CrabCallr] Received ping, sending pong');
     const pong: PongMessage = {
       type: 'pong' as MessageType.PONG,
+      ts: Date.now(),
     };
     this.send(pong);
   }
@@ -361,7 +365,7 @@ export class CrabCallrWebSocket extends EventEmitter {
       if (!this.isConnected()) return;
 
       this.logger.debug?.('[CrabCallr] Sending ping');
-      const ping = { type: 'ping', timestamp: Date.now() };
+      const ping = { type: 'ping', ts: Date.now() };
       this.ws?.send(JSON.stringify(ping));
 
       // Set timeout for pong response
