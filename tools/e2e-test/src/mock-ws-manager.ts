@@ -253,10 +253,6 @@ export class MockWsManager extends EventEmitter {
     });
   }
 
-  sendPing(): void {
-    this.sendToPlugin({ type: "pong", ts: Date.now() });
-  }
-
   waitForMessage(type: string, timeoutMs: number): Promise<PluginToManagerMessage> {
     // Check already-received messages
     const existing = this.receivedMessages.find((m) => m.type === type);
