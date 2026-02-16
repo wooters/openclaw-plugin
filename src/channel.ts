@@ -112,6 +112,7 @@ function startFillerTimer(
 
   const sendFiller = () => {
     if (!state.processingMessage) return;
+    if (state.endCallRequested) return;
     if (state.fillerCount >= maxPerRequest) return;
 
     const phrase = phrases[state.fillerPhraseIndex % phrases.length];
@@ -617,7 +618,9 @@ export function endCrabCallrCall(params?: {
   if (activeStates.length > 1) {
     return { ok: false, error: "Multiple active calls — cannot determine which to end" };
   }
-  activeStates[0].endCallRequested = true;
+  const state = activeStates[0];
+  state.endCallRequested = true;
+  clearFillerTimer(state);
   return { ok: true };
 }
 
