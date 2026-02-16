@@ -69,19 +69,12 @@ export interface PongMessage {
   type: "pong";
 }
 
-export interface ErrorMessage {
-  type: "error";
-  code: string;
-  message: string;
-}
-
 export type ManagerToPluginMessage =
   | AuthResultMessage
   | UserMessageMessage
   | CallStartMessage
   | CallEndMessage
-  | PongMessage
-  | ErrorMessage;
+  | PongMessage;
 
 // ---- Test infrastructure types ----
 

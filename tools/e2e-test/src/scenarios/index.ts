@@ -9,6 +9,7 @@ import { createPingPongScenario } from "./ping-pong.js";
 import { createCallLifecycleScenario } from "./call-lifecycle.js";
 import { createMultiTurnScenario } from "./multi-turn.js";
 import { createAgentEndCallScenario } from "./agent-end-call.js";
+import { createProtocolSchemaScenario } from "./protocol-schema.js";
 
 export function createAllScenarios(mock: MockWsManager): TestScenario[] {
   return [
@@ -17,5 +18,7 @@ export function createAllScenarios(mock: MockWsManager): TestScenario[] {
     createCallLifecycleScenario(mock),
     createMultiTurnScenario(mock),
     createAgentEndCallScenario(mock),
+    // Schema compliance must run last — it checks all accumulated violations
+    createProtocolSchemaScenario(mock),
   ];
 }

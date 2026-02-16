@@ -1,0 +1,295 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://crabcallr.com/protocol/crabcallr-protocol.schema.json",
+  "title": "CrabCallr WebSocket Protocol",
+  "description": "Message protocol for CrabCallr WebSocket communication. Fire-and-forget messaging architecture: no request/response correlation, no pending requests, no timeouts at the message level.",
+  "version": "1.0.0",
+
+  "$defs": {
+    "callSource": {
+      "type": "string",
+      "enum": ["browser", "phone"],
+      "description": "How the call was initiated."
+    },
+
+    "ping": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "ping" }
+      },
+      "required": ["type"],
+      "additionalProperties": false
+    },
+
+    "pong": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "pong" }
+      },
+      "required": ["type"],
+      "additionalProperties": false
+    },
+
+    "utterance": {
+      "type": "object",
+      "description": "A speech utterance (response, filler, idle prompt, or goodbye). Sent by plugin to manager and forwarded from manager to agent.",
+      "properties": {
+        "type": { "const": "utterance" },
+        "utteranceId": {
+          "type": "string",
+          "description": "Unique utterance identifier. Convention: oc_NNN_MMM (turn_utterance).",
+          "pattern": "^oc_\\d{3,}_\\d{3,}$"
+        },
+        "callId": { "type": "string" },
+        "text": { "type": "string" },
+        "endCall": {
+          "type": "boolean",
+          "description": "If true, the call should end after this utterance is spoken."
+        }
+      },
+      "required": ["type", "utteranceId", "callId", "text"],
+      "additionalProperties": false
+    },
+
+    "pluginAuth": {
+      "type": "object",
+      "description": "Plugin authentication message. API key format: cc_ + 32 hex chars.",
+      "properties": {
+        "type": { "const": "auth" },
+        "apiKey": { "type": "string" }
+      },
+      "required": ["type", "apiKey"],
+      "additionalProperties": false
+    },
+
+    "pluginCallEndRequest": {
+      "type": "object",
+      "description": "Plugin requests to end a call (e.g., via crabcallr_end_call tool).",
+      "properties": {
+        "type": { "const": "call_end_request" },
+        "userId": { "type": "string" },
+        "callId": { "type": "string" }
+      },
+      "required": ["type", "userId", "callId"],
+      "additionalProperties": false
+    },
+
+    "authResult": {
+      "type": "object",
+      "description": "Authentication result sent to plugin.",
+      "properties": {
+        "type": { "const": "auth_result" },
+        "success": { "type": "boolean" },
+        "userId": { "type": "string" },
+        "error": { "type": "string" }
+      },
+      "required": ["type", "success"],
+      "additionalProperties": false
+    },
+
+    "managerCallStart": {
+      "type": "object",
+      "description": "Notification to plugin that a call has started.",
+      "properties": {
+        "type": { "const": "call_start" },
+        "callId": { "type": "string" },
+        "source": { "$ref": "#/$defs/callSource" }
+      },
+      "required": ["type", "callId", "source"],
+      "additionalProperties": false
+    },
+
+    "managerUserMessage": {
+      "type": "object",
+      "description": "User speech transcription forwarded to plugin.",
+      "properties": {
+        "type": { "const": "user_message" },
+        "messageId": {
+          "type": "string",
+          "description": "Unique message identifier. Convention: usr_NNN (monotonic per call).",
+          "pattern": "^usr_\\d{3,}$"
+        },
+        "text": { "type": "string" },
+        "callId": { "type": "string" }
+      },
+      "required": ["type", "messageId", "text", "callId"],
+      "additionalProperties": false
+    },
+
+    "managerCallEnd": {
+      "type": "object",
+      "description": "Notification to plugin that a call has ended.",
+      "properties": {
+        "type": { "const": "call_end" },
+        "callId": { "type": "string" },
+        "durationSeconds": { "type": "number" },
+        "source": { "$ref": "#/$defs/callSource" },
+        "startedAt": {
+          "type": "number",
+          "description": "Unix timestamp (milliseconds) when the call started."
+        }
+      },
+      "required": ["type", "callId", "durationSeconds", "source", "startedAt"],
+      "additionalProperties": false
+    },
+
+    "agentConnect": {
+      "type": "object",
+      "description": "Agent authentication message.",
+      "properties": {
+        "type": { "const": "agent_connect" },
+        "agentSecret": { "type": "string" },
+        "agentId": { "type": "string" }
+      },
+      "required": ["type", "agentSecret", "agentId"],
+      "additionalProperties": false
+    },
+
+    "agentUserMessage": {
+      "type": "object",
+      "description": "User speech transcription sent from agent to manager for routing to plugin.",
+      "properties": {
+        "type": { "const": "user_message" },
+        "userId": { "type": "string" },
+        "callId": { "type": "string" },
+        "messageId": {
+          "type": "string",
+          "description": "Unique message identifier. Convention: usr_NNN (monotonic per call).",
+          "pattern": "^usr_\\d{3,}$"
+        },
+        "text": { "type": "string" }
+      },
+      "required": ["type", "userId", "callId", "messageId", "text"],
+      "additionalProperties": false
+    },
+
+    "agentCallStart": {
+      "type": "object",
+      "description": "Agent notifies manager that a call has started.",
+      "properties": {
+        "type": { "const": "call_start" },
+        "userId": { "type": "string" },
+        "callId": { "type": "string" },
+        "source": { "$ref": "#/$defs/callSource" },
+        "timestamp": {
+          "type": "number",
+          "description": "Optional Unix timestamp (seconds) of call start."
+        }
+      },
+      "required": ["type", "userId", "callId", "source"],
+      "additionalProperties": false
+    },
+
+    "agentCallEnd": {
+      "type": "object",
+      "description": "Agent notifies manager that a call has ended.",
+      "properties": {
+        "type": { "const": "call_end" },
+        "userId": { "type": "string" },
+        "callId": { "type": "string" },
+        "durationSeconds": { "type": "number" },
+        "source": { "$ref": "#/$defs/callSource" },
+        "startedAt": {
+          "type": "number",
+          "description": "Unix timestamp when the call started."
+        }
+      },
+      "required": ["type", "userId", "callId", "durationSeconds", "source", "startedAt"],
+      "additionalProperties": false
+    },
+
+    "agentIsPluginConnected": {
+      "type": "object",
+      "description": "Agent queries whether a user's plugin is connected.",
+      "properties": {
+        "type": { "const": "is_plugin_connected" },
+        "userId": { "type": "string" }
+      },
+      "required": ["type", "userId"],
+      "additionalProperties": false
+    },
+
+    "agentAuthResult": {
+      "type": "object",
+      "description": "Authentication result sent to agent.",
+      "properties": {
+        "type": { "const": "agent_auth_result" },
+        "success": { "type": "boolean" },
+        "error": { "type": "string" }
+      },
+      "required": ["type", "success"],
+      "additionalProperties": false
+    },
+
+    "pluginConnectedResult": {
+      "type": "object",
+      "description": "Result of a plugin connectivity check. On success: userId + connected. On error: error string. userId may be present on error too.",
+      "properties": {
+        "type": { "const": "plugin_connected_result" },
+        "userId": { "type": "string" },
+        "connected": { "type": "boolean" },
+        "error": { "type": "string" }
+      },
+      "required": ["type"],
+      "additionalProperties": false
+    },
+
+    "agentCallEndRequest": {
+      "type": "object",
+      "description": "Manager forwards a call end request to the agent.",
+      "properties": {
+        "type": { "const": "call_end_request" },
+        "userId": { "type": "string" },
+        "callId": { "type": "string" }
+      },
+      "required": ["type", "userId", "callId"],
+      "additionalProperties": false
+    }
+  },
+
+  "properties": {
+    "PluginToManager": {
+      "description": "Messages sent from the OpenClaw plugin to the ws-manager.",
+      "oneOf": [
+        { "$ref": "#/$defs/pluginAuth" },
+        { "$ref": "#/$defs/utterance" },
+        { "$ref": "#/$defs/pluginCallEndRequest" },
+        { "$ref": "#/$defs/ping" }
+      ]
+    },
+
+    "ManagerToPlugin": {
+      "description": "Messages sent from the ws-manager to the OpenClaw plugin.",
+      "oneOf": [
+        { "$ref": "#/$defs/authResult" },
+        { "$ref": "#/$defs/managerCallStart" },
+        { "$ref": "#/$defs/managerUserMessage" },
+        { "$ref": "#/$defs/managerCallEnd" },
+        { "$ref": "#/$defs/pong" }
+      ]
+    },
+
+    "AgentToManager": {
+      "description": "Messages sent from the LiveKit voice agent to the ws-manager.",
+      "oneOf": [
+        { "$ref": "#/$defs/agentConnect" },
+        { "$ref": "#/$defs/agentUserMessage" },
+        { "$ref": "#/$defs/agentCallStart" },
+        { "$ref": "#/$defs/agentCallEnd" },
+        { "$ref": "#/$defs/agentIsPluginConnected" },
+        { "$ref": "#/$defs/ping" }
+      ]
+    },
+
+    "ManagerToAgent": {
+      "description": "Messages sent from the ws-manager to the LiveKit voice agent.",
+      "oneOf": [
+        { "$ref": "#/$defs/agentAuthResult" },
+        { "$ref": "#/$defs/utterance" },
+        { "$ref": "#/$defs/pluginConnectedResult" },
+        { "$ref": "#/$defs/agentCallEndRequest" },
+        { "$ref": "#/$defs/pong" }
+      ]
+    }
+  }
+}

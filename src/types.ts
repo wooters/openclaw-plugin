@@ -95,7 +95,6 @@ export enum MessageType {
   UTTERANCE = "utterance",
   PING = "ping",
   PONG = "pong",
-  ERROR = "error",
   CALL_START = "call_start",
   CALL_END = "call_end",
   CALL_END_REQUEST = "call_end_request",
@@ -140,12 +139,6 @@ export interface PongMessage {
   type: MessageType.PONG;
 }
 
-export interface ErrorMessage {
-  type: MessageType.ERROR;
-  code: string;
-  message: string;
-}
-
 export interface CallStartMessage {
   type: MessageType.CALL_START;
   callId: string;
@@ -172,8 +165,7 @@ export type InboundWsMessage =
   | CallStartMessage
   | CallEndMessage
   | PingMessage
-  | PongMessage
-  | ErrorMessage;
+  | PongMessage;
 
 export type OutboundWsMessage =
   | AuthMessage

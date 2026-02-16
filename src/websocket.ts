@@ -232,10 +232,6 @@ export class CrabCallrWebSocket extends EventEmitter {
         this.handleCallEnd(message);
         break;
 
-      case 'error':
-        this.handleErrorMessage(message);
-        break;
-
       default:
         this.logger.warn(`[CrabCallr] Unknown message type: ${(message as { type: string }).type}`);
     }
@@ -289,11 +285,6 @@ export class CrabCallrWebSocket extends EventEmitter {
   private handleCallEnd(message: CallEndMessage): void {
     this.logger.info(`[CrabCallr] Call ended: ${message.callId} (duration: ${message.durationSeconds}s)`);
     this.emit('callEnd', message.callId, message.durationSeconds, message.source, message.startedAt);
-  }
-
-  private handleErrorMessage(message: { code: string; message: string }): void {
-    this.logger.error(`[CrabCallr] Server error: ${message.code} - ${message.message}`);
-    this.emit('error', new Error(`${message.code}: ${message.message}`));
   }
 
   private handleClose(code: number, reason: string): void {

@@ -6,13 +6,36 @@
 
 import { EventEmitter } from "events";
 import { createServer, type IncomingMessage, type Server } from "http";
+import { readFileSync } from "fs";
+import { resolve, dirname } from "path";
+import { fileURLToPath } from "url";
 import { WebSocketServer, WebSocket } from "ws";
+import Ajv2020 from "ajv/dist/2020.js";
 import type {
   CallSource,
   ManagerToPluginMessage,
   PluginToManagerMessage,
 } from "./types.js";
 import * as log from "./logger.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Load and compile protocol schema for validation
+const schemaPath = resolve(__dirname, "../../protocol/crabcallr-protocol.schema.json");
+let validatePluginToManager: ReturnType<Ajv2020["compile"]> | null = null;
+let validateManagerToPlugin: ReturnType<Ajv2020["compile"]> | null = null;
+
+try {
+  const schema = JSON.parse(readFileSync(schemaPath, "utf-8"));
+  const ajv = new Ajv2020({ strict: false });
+  ajv.addSchema(schema, "protocol");
+  validatePluginToManager = ajv.compile({ $ref: "protocol#/properties/PluginToManager" });
+  validateManagerToPlugin = ajv.compile({ $ref: "protocol#/properties/ManagerToPlugin" });
+  log.debug("Mock ws-manager: protocol schema loaded for validation");
+} catch (err) {
+  log.warn(`Mock ws-manager: could not load protocol schema (${err}), validation disabled`);
+}
 
 const AUTH_TIMEOUT_MS = 10_000;
 
@@ -22,6 +45,7 @@ export class MockWsManager extends EventEmitter {
   private pluginWs: WebSocket | null = null;
   private authenticated = false;
   private receivedMessages: PluginToManagerMessage[] = [];
+  private schemaViolations: Array<{ direction: "inbound" | "outbound"; message: unknown; errors: string }> = [];
   private connectionResolvers: Array<() => void> = [];
   private messageWaiters: Array<{
     type: string;
@@ -71,6 +95,14 @@ export class MockWsManager extends EventEmitter {
           }
 
           log.debug(`Mock ws-manager: received ${message.type}`);
+
+          // Validate inbound message against schema
+          if (validatePluginToManager && !validatePluginToManager(message)) {
+            const errors = JSON.stringify(validatePluginToManager.errors);
+            log.warn(`Mock ws-manager: schema violation (inbound ${message.type}): ${errors}`);
+            this.schemaViolations.push({ direction: "inbound", message, errors });
+          }
+
           this.receivedMessages.push(message);
 
           // Handle auth
@@ -222,10 +254,6 @@ export class MockWsManager extends EventEmitter {
     this.sendToPlugin({ type: "pong" });
   }
 
-  sendError(code: string, message: string): void {
-    this.sendToPlugin({ type: "error", code, message });
-  }
-
   waitForMessage(type: string, timeoutMs: number): Promise<PluginToManagerMessage> {
     // Check already-received messages
     const existing = this.receivedMessages.find((m) => m.type === type);
@@ -264,6 +292,14 @@ export class MockWsManager extends EventEmitter {
     return this.authenticated && this.pluginWs !== null && this.pluginWs.readyState === WebSocket.OPEN;
   }
 
+  getSchemaViolations(): Array<{ direction: "inbound" | "outbound"; message: unknown; errors: string }> {
+    return [...this.schemaViolations];
+  }
+
+  hasSchemaViolations(): boolean {
+    return this.schemaViolations.length > 0;
+  }
+
   // ---- Internal ----
 
   private sendToPlugin(message: ManagerToPluginMessage): void {
@@ -271,6 +307,14 @@ export class MockWsManager extends EventEmitter {
       log.warn(`Mock ws-manager: cannot send ${message.type} - plugin not connected`);
       return;
     }
+
+    // Validate outbound message against schema
+    if (validateManagerToPlugin && !validateManagerToPlugin(message)) {
+      const errors = JSON.stringify(validateManagerToPlugin.errors);
+      log.warn(`Mock ws-manager: schema violation (outbound ${message.type}): ${errors}`);
+      this.schemaViolations.push({ direction: "outbound", message, errors });
+    }
+
     log.debug(`Mock ws-manager: sending ${message.type}`);
     this.pluginWs.send(JSON.stringify(message));
   }

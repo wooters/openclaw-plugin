@@ -19,16 +19,18 @@ This is a OpenClaw plugin that connects to the CrabCallr hosted service via WebS
 
 - **src/index.ts** - Plugin entry point exporting a default `register(api: PluginAPI)` function. Registers as a channel plugin, service, tools, and CLI commands. Handles transcript-to-response flow via channel inbound/outbound APIs.
 - **src/websocket.ts** - `CrabCallrWebSocket` class managing persistent connection to CrabCallr service. Handles authentication, reconnection with exponential backoff, and ping/pong keepalive.
-- **src/types.ts** - All TypeScript interfaces including PluginAPI, channel plugin types, message types (AUTH, REQUEST, RESPONSE, etc.), and config schema.
+- **src/types.ts** - All TypeScript interfaces including PluginAPI, channel plugin types, message types (AUTH, USER_MESSAGE, UTTERANCE, etc.), and config schema.
 - **src/config.ts** - Configuration validation and defaults.
 
-### Message Flow
+### Message Flow (fire-and-forget)
 
-1. CrabCallr service sends `REQUEST` messages (user speech)
+1. CrabCallr service sends `user_message` (user speech transcription)
 2. Plugin forwards text to OpenClaw via `api.inbound.receiveMessage()` as a channel message
 3. OpenClaw agent processes and responds via channel's `outbound.sendText()`
-4. Plugin sends `RESPONSE` message back to CrabCallr service
-5. CrabCallr service converts to speech
+4. Plugin sends `utterance` message back to CrabCallr service (with turn-based ID `oc_NNN_MMM`)
+5. CrabCallr service converts to speech via TTS
+
+No request/response correlation — plugin sends utterances (responses, fillers, idle prompts, goodbyes) as fire-and-forget messages. The `endCall` flag on an utterance signals the call should end after speaking.
 
 ### Voice Skill
 
@@ -37,6 +39,12 @@ The `skills/crabcallr/SKILL.md` skill is automatically loaded when the plugin is
 ### Plugin Manifest
 
 `openclaw.plugin.json` defines the plugin ID, channel metadata (label, docsPath, blurb, aliases), skill paths, and configuration schema requiring an `apiKey` (format: `cc_*`). Config is located at `channels.crabcallr.accounts.default`.
+
+## Protocol Schema
+
+The protocol JSON Schema is at `protocol/crabcallr-protocol.schema.json` (copy of canonical from `crabcallr/shared/protocol/`). The E2E test mock-ws-manager validates all messages against this schema during test runs — schema violations are reported as failures in the `protocol-schema` scenario.
+
+See `../CLAUDE.md` > Protocol Change Workflow for the full cross-repo update process.
 
 ## Testing
 
@@ -78,13 +86,13 @@ npm test -- --verbose
 |----------|------|---------------|
 | `auth-connect` | protocol + live | Plugin connects, sends `cc_*` API key, stays connected |
 | `ping-pong` | protocol + live | Plugin sends keepalive pings, receives pongs |
-| `call-lifecycle` | protocol + live | call_start → request → (response in live) → call_end |
-| `multi-turn` | live only | 3 sequential requests in one call with LLM responses |
-| `agent-end-call` | live only | Agent calls crabcallr_end_call tool → speak(endCall=true) or call_end_request |
+| `call-lifecycle` | protocol + live | call_start → user_message → (utterance in live) → call_end |
+| `multi-turn` | live only | 3 sequential user_messages in one call with LLM utterances |
+| `agent-end-call` | live only | Agent calls crabcallr_end_call tool → utterance(endCall=true) or call_end_request |
 
 **Exit codes:** `0` = all pass, `1` = test failure, `2` = setup/infra error.
 
-**How it works:** The tool creates an isolated temp `OPENCLAW_STATE_DIR`, installs OpenClaw, links the plugin, writes config pointing at `ws://localhost:19876/plugin`, and spawns `openclaw gateway`. The mock ws-manager validates the plugin's auth message, responds to pings, and sends test call/request messages. See `tools/e2e-test/src/mock-ws-manager.ts` for the protocol implementation.
+**How it works:** The tool creates an isolated temp `OPENCLAW_STATE_DIR`, installs OpenClaw, links the plugin, writes config pointing at `ws://localhost:19876/plugin`, and spawns `openclaw gateway`. The mock ws-manager validates the plugin's auth message, responds to pings, and sends test call/user_message messages. See `tools/e2e-test/src/mock-ws-manager.ts` for the protocol implementation.
 
 **Key CLI flags:**
 
