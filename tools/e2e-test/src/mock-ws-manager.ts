@@ -22,7 +22,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Load and compile protocol schema for validation
-const schemaPath = resolve(__dirname, "../../protocol/crabcallr-protocol.schema.json");
+const schemaPath = resolve(__dirname, "../../../protocol/crabcallr-protocol.schema.json");
 let validatePluginToManager: ReturnType<Ajv2020["compile"]> | null = null;
 let validateManagerToPlugin: ReturnType<Ajv2020["compile"]> | null = null;
 

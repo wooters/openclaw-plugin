@@ -3,7 +3,7 @@
   "$id": "https://crabcallr.com/protocol/crabcallr-protocol.schema.json",
   "title": "CrabCallr WebSocket Protocol",
   "description": "Message protocol for CrabCallr WebSocket communication. Fire-and-forget messaging architecture: no request/response correlation, no pending requests, no timeouts at the message level.",
-  "version": "1.0.0",
+  "version": "1.0.1",
 
   "$defs": {
     "callSource": {
@@ -15,7 +15,11 @@
     "ping": {
       "type": "object",
       "properties": {
-        "type": { "const": "ping" }
+        "type": { "const": "ping" },
+        "timestamp": {
+          "type": "number",
+          "description": "Optional Unix timestamp (milliseconds) for diagnostics."
+        }
       },
       "required": ["type"],
       "additionalProperties": false
@@ -37,8 +41,7 @@
         "type": { "const": "utterance" },
         "utteranceId": {
           "type": "string",
-          "description": "Unique utterance identifier. Convention: oc_NNN_MMM (turn_utterance).",
-          "pattern": "^oc_\\d{3,}_\\d{3,}$"
+          "description": "Unique utterance identifier. Convention: oc_NNN_MMM (turn_utterance). Error/extension variants: oc_err_*, oc_ext_*."
         },
         "callId": { "type": "string" },
         "text": { "type": "string" },
@@ -106,8 +109,7 @@
         "type": { "const": "user_message" },
         "messageId": {
           "type": "string",
-          "description": "Unique message identifier. Convention: usr_NNN (monotonic per call).",
-          "pattern": "^usr_\\d{3,}$"
+          "description": "Unique message identifier. Convention: usr_NNN (monotonic per call)."
         },
         "text": { "type": "string" },
         "callId": { "type": "string" }
@@ -154,8 +156,7 @@
         "callId": { "type": "string" },
         "messageId": {
           "type": "string",
-          "description": "Unique message identifier. Convention: usr_NNN (monotonic per call).",
-          "pattern": "^usr_\\d{3,}$"
+          "description": "Unique message identifier. Convention: usr_NNN (monotonic per call)."
         },
         "text": { "type": "string" }
       },
