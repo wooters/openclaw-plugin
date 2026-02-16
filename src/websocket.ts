@@ -12,15 +12,13 @@ import type {
   CallEndRequestMessage,
   CallStartMessage,
   ConnectionStatus,
-  FillerMessage,
   InboundWsMessage,
-  MessageType,
   OutboundWsMessage,
   PongMessage,
-  ResponseMessage,
-  SpeakMessage,
+  UtteranceMessage,
   AuthMessage,
 } from './types.js';
+import { MessageType } from './types.js';
 import { maskApiKey } from './config.js';
 
 // Plugin version for User-Agent header
@@ -142,18 +140,20 @@ export class CrabCallrWebSocket extends EventEmitter {
   }
 
   /**
-   * Send a response for a request
+   * Send an utterance (response, filler, or goodbye)
    */
-  sendResponse(requestId: string, text: string): void {
-    if (!this.isConnected()) {
-      this.logger.warn('[CrabCallr] Cannot send response: not connected');
+  sendUtterance(callId: string, utteranceId: string, text: string, endCall?: boolean): void {
+    if (!this.isConnected() || !this.userId) {
+      this.logger.warn('[CrabCallr] Cannot send utterance: not connected');
       return;
     }
 
-    const message: ResponseMessage = {
-      type: 'response' as MessageType.RESPONSE,
-      requestId,
+    const message: UtteranceMessage = {
+      type: MessageType.UTTERANCE,
+      utteranceId,
+      callId,
       text,
+      ...(endCall ? { endCall } : {}),
     };
 
     this.send(message);
@@ -172,44 +172,6 @@ export class CrabCallrWebSocket extends EventEmitter {
       type: 'call_end_request' as MessageType.CALL_END_REQUEST,
       userId: this.userId,
       callId,
-    };
-
-    this.send(message);
-  }
-
-  /**
-   * Send a filler phrase for a pending request
-   */
-  sendFiller(requestId: string, text: string): void {
-    if (!this.isConnected()) {
-      this.logger.warn('[CrabCallr] Cannot send filler: not connected');
-      return;
-    }
-
-    const message: FillerMessage = {
-      type: 'filler' as MessageType.FILLER,
-      requestId,
-      text,
-    };
-
-    this.send(message);
-  }
-
-  /**
-   * Send unprompted speech (idle prompt, goodbye)
-   */
-  sendSpeak(callId: string, text: string, endCall?: boolean): void {
-    if (!this.isConnected() || !this.userId) {
-      this.logger.warn('[CrabCallr] Cannot send speak: not connected');
-      return;
-    }
-
-    const message: SpeakMessage = {
-      type: 'speak' as MessageType.SPEAK,
-      userId: this.userId,
-      callId,
-      text,
-      ...(endCall ? { endCall } : {}),
     };
 
     this.send(message);
@@ -250,8 +212,8 @@ export class CrabCallrWebSocket extends EventEmitter {
         this.handleAuthResult(message);
         break;
 
-      case 'request':
-        this.handleRequest(message);
+      case 'user_message':
+        this.handleUserMessage(message);
         break;
 
       case 'ping':
@@ -296,10 +258,10 @@ export class CrabCallrWebSocket extends EventEmitter {
     }
   }
 
-  private handleRequest(message: { requestId: string; text: string; callId: string }): void {
-    const { requestId, text, callId } = message;
-    this.logger.debug?.(`[CrabCallr] Request: "${text}"`);
-    this.emit('request', requestId, text, callId);
+  private handleUserMessage(message: { messageId: string; text: string; callId: string }): void {
+    const { messageId, text, callId } = message;
+    this.logger.debug?.(`[CrabCallr] User message: "${text}"`);
+    this.emit('userMessage', messageId, text, callId);
   }
 
   private handlePing(): void {

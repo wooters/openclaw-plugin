@@ -25,7 +25,6 @@ export class MockWsManager extends EventEmitter {
   private connectionResolvers: Array<() => void> = [];
   private messageWaiters: Array<{
     type: string;
-    requestId?: string;
     resolve: (msg: PluginToManagerMessage) => void;
     reject: (err: Error) => void;
     timer: NodeJS.Timeout;
@@ -111,16 +110,9 @@ export class MockWsManager extends EventEmitter {
             return;
           }
 
-          // Handle filler from plugin (just log and notify waiters)
-          if (message.type === "filler") {
-            log.debug(`Mock ws-manager: received filler for ${message.requestId}: "${message.text}"`);
-            this.notifyWaiters(message);
-            return;
-          }
-
-          // Handle speak from plugin (just log and notify waiters)
-          if (message.type === "speak") {
-            log.debug(`Mock ws-manager: received speak for ${message.callId}: "${message.text}" (endCall=${message.endCall ?? false})`);
+          // Handle utterance from plugin (just log and notify waiters)
+          if (message.type === "utterance") {
+            log.debug(`Mock ws-manager: received utterance ${message.utteranceId}: "${message.text}" (endCall=${message.endCall ?? false})`);
             this.notifyWaiters(message);
             return;
           }
@@ -212,8 +204,8 @@ export class MockWsManager extends EventEmitter {
     this.sendToPlugin({ type: "call_start", callId, source });
   }
 
-  sendRequest(requestId: string, text: string, callId: string): void {
-    this.sendToPlugin({ type: "request", requestId, text, callId });
+  sendUserMessage(messageId: string, text: string, callId: string): void {
+    this.sendToPlugin({ type: "user_message", messageId, text, callId });
   }
 
   sendCallEnd(callId: string, durationSeconds: number, source: CallSource): void {
@@ -253,25 +245,11 @@ export class MockWsManager extends EventEmitter {
     });
   }
 
-  waitForResponse(requestId: string, timeoutMs: number): Promise<PluginToManagerMessage> {
-    // Check already-received messages
-    const existing = this.receivedMessages.find(
-      (m) => m.type === "response" && "requestId" in m && m.requestId === requestId,
-    );
-    if (existing) {
-      return Promise.resolve(existing);
-    }
-
-    return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        const idx = this.messageWaiters.findIndex((w) => w === waiter);
-        if (idx >= 0) this.messageWaiters.splice(idx, 1);
-        reject(new Error(`Timeout waiting for response to request "${requestId}" (${timeoutMs}ms)`));
-      }, timeoutMs);
-
-      const waiter = { type: "response", requestId, resolve, reject, timer };
-      this.messageWaiters.push(waiter);
-    });
+  /**
+   * Wait for an utterance from the plugin. Returns the first utterance message received.
+   */
+  waitForUtterance(timeoutMs: number): Promise<PluginToManagerMessage> {
+    return this.waitForMessage("utterance", timeoutMs);
   }
 
   getReceivedMessages(): PluginToManagerMessage[] {
@@ -303,11 +281,6 @@ export class MockWsManager extends EventEmitter {
     for (let i = 0; i < this.messageWaiters.length; i++) {
       const waiter = this.messageWaiters[i];
       if (waiter.type !== message.type) continue;
-
-      // For response messages, also match requestId if specified
-      if (waiter.requestId && message.type === "response" && "requestId" in message) {
-        if (message.requestId !== waiter.requestId) continue;
-      }
 
       clearTimeout(waiter.timer);
       waiter.resolve(message);

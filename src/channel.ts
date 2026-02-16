@@ -37,11 +37,14 @@ type CallState = {
   lastActivityAt: number;
   idlePromptCount: number;
   idleCheckInterval: NodeJS.Timeout | null;
-  currentRequestId: string | null;
+  nextOcTurn: number;
+  currentUtteranceIndex: number;
   fillerTimer: NodeJS.Timeout | null;
   fillerCount: number;
   fillerPhraseIndex: number;
   endCallRequested: boolean;
+  /** True while a user message is being processed (fillers allowed). */
+  processingMessage: boolean;
 };
 
 type CrabCallrConnection = {
@@ -61,12 +64,19 @@ function createCallState(callId: string): CallState {
     lastActivityAt: Date.now(),
     idlePromptCount: 0,
     idleCheckInterval: null,
-    currentRequestId: null,
+    nextOcTurn: 0,
+    currentUtteranceIndex: 0,
     fillerTimer: null,
     fillerCount: 0,
     fillerPhraseIndex: 0,
     endCallRequested: false,
+    processingMessage: false,
   };
+}
+
+function nextUtteranceId(state: CallState): string {
+  state.currentUtteranceIndex++;
+  return `oc_${String(state.nextOcTurn).padStart(3, '0')}_${String(state.currentUtteranceIndex).padStart(3, '0')}`;
 }
 
 function clearCallState(state: CallState): void {
@@ -101,15 +111,16 @@ function startFillerTimer(
   state.fillerCount = 0;
 
   const sendFiller = () => {
-    if (!state.currentRequestId) return;
+    if (!state.processingMessage) return;
     if (state.fillerCount >= maxPerRequest) return;
 
     const phrase = phrases[state.fillerPhraseIndex % phrases.length];
     state.fillerPhraseIndex++;
     state.fillerCount++;
 
-    logger.debug?.(`[CrabCallr] Sending filler for ${state.currentRequestId}: "${phrase}"`);
-    ws.sendFiller(state.currentRequestId, phrase);
+    const uid = nextUtteranceId(state);
+    logger.debug?.(`[CrabCallr] Sending filler ${uid}: "${phrase}"`);
+    ws.sendUtterance(state.callId, uid, phrase);
 
     if (state.fillerCount < maxPerRequest) {
       state.fillerTimer = setTimeout(sendFiller, intervalSec * 1000);
@@ -126,7 +137,7 @@ function clearFillerTimer(state: CallState): void {
     clearTimeout(state.fillerTimer);
     state.fillerTimer = null;
   }
-  state.currentRequestId = null;
+  state.processingMessage = false;
   state.fillerCount = 0;
 }
 
@@ -139,22 +150,26 @@ function startIdleCheckInterval(
   if (!config.idle.enabled) return;
 
   state.idleCheckInterval = setInterval(() => {
-    // Don't prompt while a request is in-flight
-    if (state.currentRequestId !== null) return;
+    // Don't prompt while a message is being processed
+    if (state.processingMessage) return;
     // Don't prompt if call end was already requested
     if (state.endCallRequested) return;
 
     const elapsed = Date.now() - state.lastActivityAt;
     if (elapsed < config.idle.timeoutSec * 1000) return;
 
+    // Idle prompts get their own turn
+    state.nextOcTurn++;
+    state.currentUtteranceIndex = 0;
+
     if (state.idlePromptCount < config.idle.maxPrompts) {
       state.idlePromptCount++;
       state.lastActivityAt = Date.now(); // Reset so next prompt waits another full timeout
       logger.info(`[CrabCallr] Idle prompt ${state.idlePromptCount}/${config.idle.maxPrompts} for call ${state.callId}`);
-      ws.sendSpeak(state.callId, config.idle.prompt);
+      ws.sendUtterance(state.callId, nextUtteranceId(state), config.idle.prompt);
     } else {
       logger.info(`[CrabCallr] Idle max prompts reached for call ${state.callId}, ending`);
-      ws.sendSpeak(state.callId, config.idle.endMessage, true);
+      ws.sendUtterance(state.callId, nextUtteranceId(state), config.idle.endMessage, true);
       // Stop checking — the call will end
       if (state.idleCheckInterval) {
         clearInterval(state.idleCheckInterval);
@@ -359,10 +374,10 @@ function createStatusSink(ctx: {
   };
 }
 
-async function handleRequest(params: {
+async function handleUserMessage(params: {
   cfg: OpenClawConfig;
   accountId: string;
-  requestId: string;
+  messageId: string;
   text: string;
   callId: string;
   ws: CrabCallrWebSocket;
@@ -374,7 +389,7 @@ async function handleRequest(params: {
   onError?: () => void;
   responseSent: { value: boolean };
 }) {
-  const { cfg, accountId, requestId, text, callId, ws, callStates, config: pluginConfig, statusSink, logError, onComplete, onError, responseSent } = params;
+  const { cfg, accountId, messageId, text, callId, ws, callStates, config: pluginConfig, statusSink, logError, onComplete, onError, responseSent } = params;
   const core = getCrabCallrRuntime();
   const route = core.channel.routing.resolveAgentRoute({
     cfg,
@@ -417,7 +432,7 @@ async function handleRequest(params: {
     SenderId: callId,
     Provider: CHANNEL_ID,
     Surface: CHANNEL_ID,
-    MessageSid: requestId,
+    MessageSid: messageId,
     Timestamp: Date.now(),
     OriginatingChannel: CHANNEL_ID,
     OriginatingTo: `crabcallr:call:${callId}`,
@@ -464,8 +479,8 @@ async function handleRequest(params: {
           if (!responseSent.value) {
             responseSent.value = true;
             if (replyText) {
-              // Route goodbye through speak(endCall=true) — voice agent speaks it, then terminates
-              ws.sendSpeak(callId, replyText, true);
+              // Route goodbye through utterance(endCall=true) — voice agent speaks it, then terminates
+              ws.sendUtterance(callId, nextUtteranceId(state), replyText, true);
             } else {
               // No goodbye text — silent hangup via call_end_request
               ws.sendCallEndRequest(callId);
@@ -479,14 +494,18 @@ async function handleRequest(params: {
         if (!replyText) {
           if (!responseSent.value) {
             responseSent.value = true;
-            ws.sendResponse(requestId, "I didn't get a response. Could you say that again?");
+            const s = callStates.get(callId);
+            const uid = s ? nextUtteranceId(s) : `oc_err_${Date.now()}`;
+            ws.sendUtterance(callId, uid, "I didn't get a response. Could you say that again?");
           }
           onComplete?.();
           return;
         }
         if (!responseSent.value) {
           responseSent.value = true;
-          ws.sendResponse(requestId, replyText);
+          const s = callStates.get(callId);
+          const uid = s ? nextUtteranceId(s) : `oc_err_${Date.now()}`;
+          ws.sendUtterance(callId, uid, replyText);
           statusSink?.({ lastOutboundAt: Date.now() });
         }
         onComplete?.();
@@ -499,7 +518,8 @@ async function handleRequest(params: {
           if (state?.endCallRequested) {
             ws.sendCallEndRequest(callId);
           } else {
-            ws.sendResponse(requestId, "I'm sorry, I encountered an error. Could you try again?");
+            const uid = state ? nextUtteranceId(state) : `oc_err_${Date.now()}`;
+            ws.sendUtterance(callId, uid, "I'm sorry, I encountered an error. Could you try again?");
           }
         }
         onError?.();
@@ -517,8 +537,10 @@ async function handleRequest(params: {
   ]);
   if (result === "timeout" && !responseSent.value) {
     responseSent.value = true;
-    logError(`[CrabCallr] Request ${requestId} timed out after ${pluginConfig.requestTimeoutSec}s`);
-    ws.sendResponse(requestId, "I'm sorry, that request took too long. Could you try again?");
+    logError(`[CrabCallr] Message ${messageId} timed out after ${pluginConfig.requestTimeoutSec}s`);
+    const state = callStates.get(callId);
+    const uid = state ? nextUtteranceId(state) : `oc_err_${Date.now()}`;
+    ws.sendUtterance(callId, uid, "I'm sorry, that request took too long. Could you try again?");
     onComplete?.();
   }
 }
@@ -559,7 +581,7 @@ export function getCrabCallrStatus(accountId?: string): {
 
 export function sendCrabCallrResponse(params: {
   accountId?: string;
-  requestId: string;
+  callId: string;
   text: string;
 }): { ok: boolean; error?: string } {
   const resolvedId = normalizeAccountId(params.accountId ?? DEFAULT_ACCOUNT_ID);
@@ -570,7 +592,9 @@ export function sendCrabCallrResponse(params: {
   if (!record.ws.isConnected()) {
     return { ok: false, error: "CrabCallr is not connected" };
   }
-  record.ws.sendResponse(params.requestId, params.text);
+  const state = record.callStates.get(params.callId);
+  const uid = state ? nextUtteranceId(state) : `oc_ext_${Date.now()}`;
+  record.ws.sendUtterance(params.callId, uid, params.text);
   record.statusSink?.({ lastOutboundAt: Date.now() });
   return { ok: true };
 }
@@ -722,7 +746,7 @@ export const crabcallrPlugin: ChannelPlugin<ResolvedCrabCallrAccount> = {
         });
       });
 
-      ws.on("request", (requestId, text, callId) => {
+      ws.on("userMessage", (messageId, text, callId) => {
         statusSink({ lastInboundAt: Date.now() });
 
         // Get or create call state (lazy init handles missed callStart on reconnect)
@@ -737,19 +761,23 @@ export const crabcallrPlugin: ChannelPlugin<ResolvedCrabCallrAccount> = {
         state.lastActivityAt = Date.now();
         state.idlePromptCount = 0;
 
+        // New turn: increment turn counter, reset utterance index
+        state.nextOcTurn++;
+        state.currentUtteranceIndex = 0;
+
         // Clear any existing filler timer and start new one
         clearFillerTimer(state);
-        state.currentRequestId = requestId;
+        state.processingMessage = true;
         startFillerTimer(state, config, ws, logger);
 
-        // Shared flag: every request must produce exactly one outbound response.
+        // Shared flag: every user message must produce exactly one outbound utterance.
         // Guards against double-send across success, error, and timeout paths.
         const responseSent = { value: false };
 
-        handleRequest({
+        handleUserMessage({
           cfg: ctx.cfg,
           accountId: account.accountId,
-          requestId,
+          messageId,
           text,
           callId,
           ws,
@@ -774,10 +802,12 @@ export const crabcallrPlugin: ChannelPlugin<ResolvedCrabCallrAccount> = {
           },
           responseSent,
         }).catch((err) => {
-          logger.error(`[CrabCallr] Failed to handle request: ${String(err)}`);
+          logger.error(`[CrabCallr] Failed to handle user message: ${String(err)}`);
           if (!responseSent.value) {
             responseSent.value = true;
-            ws.sendResponse(requestId, "I'm sorry, I encountered an error. Could you try again?");
+            const s = callStates.get(callId);
+            const uid = s ? nextUtteranceId(s) : `oc_err_${Date.now()}`;
+            ws.sendUtterance(callId, uid, "I'm sorry, I encountered an error. Could you try again?");
           }
           const s = callStates.get(callId);
           if (s) {

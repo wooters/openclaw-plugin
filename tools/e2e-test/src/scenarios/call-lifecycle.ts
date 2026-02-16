@@ -1,5 +1,5 @@
 /**
- * Scenario: Full call lifecycle — call_start → request → (optional response) → call_end
+ * Scenario: Full call lifecycle — call_start → user_message → (optional utterance) → call_end
  */
 
 import type { MockWsManager } from "../mock-ws-manager.js";
@@ -8,7 +8,7 @@ import type { TestContext, TestResult, TestScenario } from "../types.js";
 export function createCallLifecycleScenario(mock: MockWsManager): TestScenario {
   return {
     name: "call-lifecycle",
-    description: "Call start, request, and call end lifecycle",
+    description: "Call start, user message, and call end lifecycle",
     async run(ctx: TestContext): Promise<TestResult> {
       const start = Date.now();
       try {
@@ -23,7 +23,7 @@ export function createCallLifecycleScenario(mock: MockWsManager): TestScenario {
         }
 
         const callId = "test-call-1";
-        const requestId = "req-1";
+        const messageId = "usr_001";
 
         // Send call_start
         mock.sendCallStart(callId, "browser");
@@ -31,42 +31,42 @@ export function createCallLifecycleScenario(mock: MockWsManager): TestScenario {
         // Small delay to let plugin process
         await new Promise((resolve) => setTimeout(resolve, 500));
 
-        // Send a request
+        // Send a user message
         mock.clearReceivedMessages();
-        mock.sendRequest(requestId, "Say hello", callId);
+        mock.sendUserMessage(messageId, "Say hello", callId);
 
         if (ctx.mode === "live") {
-          // In live mode, expect a response with matching requestId and non-empty text
+          // In live mode, expect an utterance with non-empty text
           try {
-            const response = await mock.waitForResponse(requestId, ctx.timeout);
+            const utterance = await mock.waitForUtterance(ctx.timeout);
 
-            if (response.type !== "response") {
+            if (utterance.type !== "utterance") {
               return {
                 name: "call-lifecycle",
                 passed: false,
                 skipped: false,
                 duration: Date.now() - start,
-                error: `Expected response message, got ${response.type}`,
+                error: `Expected utterance message, got ${utterance.type}`,
               };
             }
 
-            if (!("requestId" in response) || response.requestId !== requestId) {
+            if (!("utteranceId" in utterance) || !utterance.utteranceId.startsWith("oc_")) {
               return {
                 name: "call-lifecycle",
                 passed: false,
                 skipped: false,
                 duration: Date.now() - start,
-                error: `Response requestId mismatch: expected "${requestId}", got "${"requestId" in response ? response.requestId : "N/A"}"`,
+                error: `Invalid utteranceId: expected "oc_*", got "${"utteranceId" in utterance ? utterance.utteranceId : "N/A"}"`,
               };
             }
 
-            if (!("text" in response) || !response.text.trim()) {
+            if (!("text" in utterance) || !utterance.text.trim()) {
               return {
                 name: "call-lifecycle",
                 passed: false,
                 skipped: false,
                 duration: Date.now() - start,
-                error: "Response text is empty",
+                error: "Utterance text is empty",
               };
             }
           } catch (err) {
@@ -79,19 +79,19 @@ export function createCallLifecycleScenario(mock: MockWsManager): TestScenario {
             };
           }
         } else {
-          // Protocol mode: wait up to 15s for a response. If none comes, that's
+          // Protocol mode: wait up to 15s for an utterance. If none comes, that's
           // acceptable (no LLM configured). We just verify no crash/disconnect.
           try {
-            const response = await mock.waitForResponse(requestId, 15_000);
-            // If we got a response, validate structure
-            if (response.type === "response" && "requestId" in response) {
-              if (response.requestId !== requestId) {
+            const utterance = await mock.waitForUtterance(15_000);
+            // If we got an utterance, validate structure
+            if (utterance.type === "utterance" && "utteranceId" in utterance) {
+              if (!utterance.utteranceId.startsWith("oc_")) {
                 return {
                   name: "call-lifecycle",
                   passed: false,
                   skipped: false,
                   duration: Date.now() - start,
-                  error: `Response requestId mismatch: expected "${requestId}", got "${response.requestId}"`,
+                  error: `Invalid utteranceId format: "${utterance.utteranceId}"`,
                 };
               }
             }

@@ -82,22 +82,22 @@ const plugin = {
     api.registerGatewayMethod(
       "crabcallr.speak",
       ({ respond, params }: GatewayRequestHandlerOptions) => {
-      const requestId =
-        typeof params?.requestId === "string" ? params.requestId.trim() : "";
+      const callId =
+        typeof params?.callId === "string" ? params.callId.trim() : "";
       const text = typeof params?.text === "string" ? params.text.trim() : "";
       const accountId = typeof params?.accountId === "string" ? params.accountId : undefined;
 
-      if (!requestId || !text) {
-        respond(false, { error: "Missing requestId or text parameter" });
+      if (!callId || !text) {
+        respond(false, { error: "Missing callId or text parameter" });
         return;
       }
 
-      const result = sendCrabCallrResponse({ accountId, requestId, text });
+      const result = sendCrabCallrResponse({ accountId, callId, text });
       if (!result.ok) {
         respond(false, { error: result.error });
         return;
       }
-      respond(true, { ok: true, requestId });
+      respond(true, { ok: true, callId });
       },
     );
   },

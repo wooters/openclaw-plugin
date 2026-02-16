@@ -1,6 +1,6 @@
 /**
  * Scenario: Agent-initiated end call — the LLM calls crabcallr_end_call and the
- * plugin routes the farewell through speak(endCall=true) or call_end_request.
+ * plugin routes the farewell through utterance(endCall=true) or call_end_request.
  *
  * Live-only: requires the LLM to invoke the crabcallr_end_call tool.
  */
@@ -35,18 +35,16 @@ export function createAgentEndCallScenario(mock: MockWsManager): TestScenario {
 
         // Ask the agent to end the call — phrased so the LLM reliably invokes
         // the crabcallr_end_call tool per SKILL.md instructions.
-        mock.sendRequest("end-req-1", "I need to go now, please end this call and say goodbye.", callId);
+        mock.sendUserMessage("usr_001", "I need to go now, please end this call and say goodbye.", callId);
 
-        // Wait for one of three outcomes:
-        //   speak(endCall=true)  → pass (farewell with hangup)
-        //   call_end_request     → pass (silent hangup)
-        //   response             → fail (LLM didn't use the tool)
+        // Wait for one of two outcomes:
+        //   utterance(endCall=true)  → pass (farewell with hangup)
+        //   call_end_request         → pass (silent hangup)
         let result;
         try {
           result = await Promise.race([
-            mock.waitForMessage("speak", ctx.timeout),
+            mock.waitForUtterance(ctx.timeout),
             mock.waitForMessage("call_end_request", ctx.timeout),
-            mock.waitForResponse("end-req-1", ctx.timeout),
           ]);
         } catch (err) {
           return {
@@ -58,15 +56,17 @@ export function createAgentEndCallScenario(mock: MockWsManager): TestScenario {
           };
         }
 
-        // speak with endCall=true — expected path when agent says goodbye
-        if (result.type === "speak") {
+        // utterance with endCall=true — expected path when agent says goodbye
+        if (result.type === "utterance") {
           if (!("endCall" in result) || result.endCall !== true) {
+            // Got an utterance without endCall — this is a normal response,
+            // meaning the LLM didn't call the crabcallr_end_call tool
             return {
               name: "agent-end-call",
               passed: false,
               skipped: false,
               duration: Date.now() - start,
-              error: "Received speak but endCall is not true",
+              error: "Expected agent to call crabcallr_end_call tool but got a normal utterance",
             };
           }
           if (!("text" in result) || !result.text.trim()) {
@@ -75,7 +75,7 @@ export function createAgentEndCallScenario(mock: MockWsManager): TestScenario {
               passed: false,
               skipped: false,
               duration: Date.now() - start,
-              error: "Received speak(endCall=true) but text is empty",
+              error: "Received utterance(endCall=true) but text is empty",
             };
           }
           // Pass — farewell with hangup
@@ -90,15 +90,6 @@ export function createAgentEndCallScenario(mock: MockWsManager): TestScenario {
               error: `call_end_request callId mismatch: expected "${callId}", got "${"callId" in result ? result.callId : "N/A"}"`,
             };
           }
-        } else if (result.type === "response") {
-          // The LLM didn't call crabcallr_end_call — it just replied normally
-          return {
-            name: "agent-end-call",
-            passed: false,
-            skipped: false,
-            duration: Date.now() - start,
-            error: "Expected agent to call crabcallr_end_call tool but got a normal response",
-          };
         }
 
         // Clean up: send call_end

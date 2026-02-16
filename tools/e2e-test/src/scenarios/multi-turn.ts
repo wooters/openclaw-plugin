@@ -1,20 +1,20 @@
 /**
- * Scenario: Multiple requests in a single call (live mode only)
+ * Scenario: Multiple user messages in a single call (live mode only)
  */
 
 import type { MockWsManager } from "../mock-ws-manager.js";
 import type { TestContext, TestResult, TestScenario } from "../types.js";
 
 const PROMPTS = [
-  { id: "mt-req-1", text: "What is 2 plus 2?" },
-  { id: "mt-req-2", text: "Now multiply that by 3" },
-  { id: "mt-req-3", text: "Thanks, goodbye" },
+  { id: "usr_001", text: "What is 2 plus 2?" },
+  { id: "usr_002", text: "Now multiply that by 3" },
+  { id: "usr_003", text: "Thanks, goodbye" },
 ];
 
 export function createMultiTurnScenario(mock: MockWsManager): TestScenario {
   return {
     name: "multi-turn",
-    description: "Multiple requests in a single call (live mode only)",
+    description: "Multiple user messages in a single call (live mode only)",
     liveOnly: true,
     async run(ctx: TestContext): Promise<TestResult> {
       const start = Date.now();
@@ -35,14 +35,14 @@ export function createMultiTurnScenario(mock: MockWsManager): TestScenario {
         mock.sendCallStart(callId, "browser");
         await new Promise((resolve) => setTimeout(resolve, 500));
 
-        // Send each request and wait for response
+        // Send each user message and wait for utterance response
         const lastPromptId = PROMPTS[PROMPTS.length - 1].id;
         for (const prompt of PROMPTS) {
           mock.clearReceivedMessages();
-          mock.sendRequest(prompt.id, prompt.text, callId);
+          mock.sendUserMessage(prompt.id, prompt.text, callId);
 
           // The last prompt ("goodbye") may trigger crabcallr_end_call, which
-          // routes the farewell through speak(endCall=true) instead of response.
+          // routes the farewell through utterance(endCall=true) or call_end_request.
           // Accept either outcome for the final prompt.
           const isLast = prompt.id === lastPromptId;
 
@@ -50,11 +50,11 @@ export function createMultiTurnScenario(mock: MockWsManager): TestScenario {
           try {
             if (isLast) {
               response = await Promise.race([
-                mock.waitForResponse(prompt.id, ctx.timeout),
-                mock.waitForMessage("speak", ctx.timeout),
+                mock.waitForUtterance(ctx.timeout),
+                mock.waitForMessage("call_end_request", ctx.timeout),
               ]);
             } else {
-              response = await mock.waitForResponse(prompt.id, ctx.timeout);
+              response = await mock.waitForUtterance(ctx.timeout);
             }
           } catch (err) {
             return {
@@ -62,42 +62,32 @@ export function createMultiTurnScenario(mock: MockWsManager): TestScenario {
               passed: false,
               skipped: false,
               duration: Date.now() - start,
-              error: `No response for "${prompt.text}": ${String(err)}`,
+              error: `No utterance for "${prompt.text}": ${String(err)}`,
             };
           }
 
-          // speak(endCall=true) is acceptable for the goodbye prompt
-          if (isLast && response.type === "speak") {
-            if (!("text" in response) || !response.text.trim()) {
-              return {
-                name: "multi-turn",
-                passed: false,
-                skipped: false,
-                duration: Date.now() - start,
-                error: `Empty speak text for "${prompt.text}"`,
-              };
-            }
-            // Agent-initiated end call — skip remaining validation
+          // call_end_request is acceptable for the goodbye prompt
+          if (isLast && response.type === "call_end_request") {
             continue;
           }
 
-          if (response.type !== "response" || !("requestId" in response)) {
+          if (response.type !== "utterance" || !("utteranceId" in response)) {
             return {
               name: "multi-turn",
               passed: false,
               skipped: false,
               duration: Date.now() - start,
-              error: `Expected response for "${prompt.id}", got ${response.type}`,
+              error: `Expected utterance for "${prompt.id}", got ${response.type}`,
             };
           }
 
-          if (response.requestId !== prompt.id) {
+          if (!response.utteranceId.startsWith("oc_")) {
             return {
               name: "multi-turn",
               passed: false,
               skipped: false,
               duration: Date.now() - start,
-              error: `requestId mismatch: expected "${prompt.id}", got "${response.requestId}"`,
+              error: `Invalid utteranceId format: "${response.utteranceId}"`,
             };
           }
 
@@ -107,8 +97,13 @@ export function createMultiTurnScenario(mock: MockWsManager): TestScenario {
               passed: false,
               skipped: false,
               duration: Date.now() - start,
-              error: `Empty response for "${prompt.text}"`,
+              error: `Empty utterance for "${prompt.text}"`,
             };
+          }
+
+          // utterance(endCall=true) is acceptable for the goodbye prompt
+          if (isLast && response.endCall) {
+            continue;
           }
         }
 

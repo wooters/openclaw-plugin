@@ -11,10 +11,12 @@ export interface AuthMessage {
   apiKey: string;
 }
 
-export interface ResponseMessage {
-  type: "response";
-  requestId: string;
+export interface UtteranceMessage {
+  type: "utterance";
+  utteranceId: string;
+  callId: string;
   text: string;
+  endCall?: boolean;
 }
 
 export interface CallEndRequestMessage {
@@ -23,30 +25,14 @@ export interface CallEndRequestMessage {
   callId: string;
 }
 
-export interface FillerMessage {
-  type: "filler";
-  requestId: string;
-  text: string;
-}
-
-export interface SpeakMessage {
-  type: "speak";
-  userId: string;
-  callId: string;
-  text: string;
-  endCall?: boolean;
-}
-
 export interface PluginPingMessage {
   type: "ping";
 }
 
 export type PluginToManagerMessage =
   | AuthMessage
-  | ResponseMessage
+  | UtteranceMessage
   | CallEndRequestMessage
-  | FillerMessage
-  | SpeakMessage
   | PluginPingMessage;
 
 // ---- Messages from manager to plugin (what the mock ws-manager sends) ----
@@ -58,9 +44,9 @@ export interface AuthResultMessage {
   error?: string;
 }
 
-export interface RequestMessage {
-  type: "request";
-  requestId: string;
+export interface UserMessageMessage {
+  type: "user_message";
+  messageId: string;
   text: string;
   callId: string;
 }
@@ -91,7 +77,7 @@ export interface ErrorMessage {
 
 export type ManagerToPluginMessage =
   | AuthResultMessage
-  | RequestMessage
+  | UserMessageMessage
   | CallStartMessage
   | CallEndMessage
   | PongMessage

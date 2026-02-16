@@ -91,16 +91,14 @@ export type CallSource = "browser" | "phone";
 export enum MessageType {
   AUTH = "auth",
   AUTH_RESULT = "auth_result",
-  REQUEST = "request",
-  RESPONSE = "response",
+  USER_MESSAGE = "user_message",
+  UTTERANCE = "utterance",
   PING = "ping",
   PONG = "pong",
   ERROR = "error",
   CALL_START = "call_start",
   CALL_END = "call_end",
   CALL_END_REQUEST = "call_end_request",
-  FILLER = "filler",
-  SPEAK = "speak",
 }
 
 export interface BaseMessage {
@@ -119,17 +117,19 @@ export interface AuthResultMessage {
   error?: string;
 }
 
-export interface RequestMessage {
-  type: MessageType.REQUEST;
-  requestId: string;
+export interface UserMessageMessage {
+  type: MessageType.USER_MESSAGE;
+  messageId: string;
   text: string;
   callId: string;
 }
 
-export interface ResponseMessage {
-  type: MessageType.RESPONSE;
-  requestId: string;
+export interface UtteranceMessage {
+  type: MessageType.UTTERANCE;
+  utteranceId: string;
+  callId: string;
   text: string;
+  endCall?: boolean;
 }
 
 export interface PingMessage {
@@ -166,23 +166,9 @@ export interface CallEndRequestMessage {
   callId: string;
 }
 
-export interface FillerMessage {
-  type: MessageType.FILLER;
-  requestId: string;
-  text: string;
-}
-
-export interface SpeakMessage {
-  type: MessageType.SPEAK;
-  userId: string;
-  callId: string;
-  text: string;
-  endCall?: boolean;
-}
-
 export type InboundWsMessage =
   | AuthResultMessage
-  | RequestMessage
+  | UserMessageMessage
   | CallStartMessage
   | CallEndMessage
   | PingMessage
@@ -191,10 +177,8 @@ export type InboundWsMessage =
 
 export type OutboundWsMessage =
   | AuthMessage
-  | ResponseMessage
+  | UtteranceMessage
   | CallEndRequestMessage
-  | FillerMessage
-  | SpeakMessage
   | PingMessage
   | PongMessage;
 
@@ -202,7 +186,7 @@ export interface CrabCallrEvents {
   connected: () => void;
   disconnected: (reason: string) => void;
   error: (error: Error) => void;
-  request: (requestId: string, text: string, callId: string) => void;
+  userMessage: (messageId: string, text: string, callId: string) => void;
   callStart: (callId: string, source: CallSource) => void;
   callEnd: (callId: string, durationSeconds: number, source: CallSource, startedAt: number) => void;
 }
