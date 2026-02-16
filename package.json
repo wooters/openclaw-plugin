@@ -1,6 +1,6 @@
 {
   "name": "@wooters/crabcallr",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "OpenClaw plugin for CrabCallr voice interface - talk to OpenClaw via phone or browser",
   "type": "module",
   "main": "dist/index.js",
