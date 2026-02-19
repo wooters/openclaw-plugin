@@ -56,6 +56,9 @@ export async function runTests(opts: CliOptions): Promise<number> {
       live: opts.live,
       apiKeyEnv: opts.apiKeyEnv,
       model: opts.model,
+      pluginInstallMode: opts.pluginInstallMode,
+      pluginSpec: opts.pluginSpec,
+      pinPluginSpec: opts.pinPluginSpec,
       verbose: opts.verbose,
     });
 

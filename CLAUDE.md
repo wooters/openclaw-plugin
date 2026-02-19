@@ -50,7 +50,7 @@ See `../CLAUDE.md` > Protocol Change Workflow for the full cross-repo update pro
 
 ### E2E Plugin Tests (`tools/e2e-test/`)
 
-End-to-end tests that verify the plugin works against a real OpenClaw gateway. The tool starts a **mock ws-manager** (local WebSocket server), spawns an **OpenClaw gateway** with the plugin linked, and runs test scenarios validating the full connection lifecycle.
+End-to-end tests that verify the plugin works against a real OpenClaw gateway. The tool starts a **mock ws-manager** (local WebSocket server), spawns an **OpenClaw gateway**, installs the plugin (local link or npm spec), and runs test scenarios validating the full connection lifecycle.
 
 **When to use:** After making changes to plugin code (WebSocket handling, auth, message routing, config). Run before committing to catch integration regressions. No external services or API keys are needed for protocol mode.
 
@@ -73,6 +73,9 @@ ANTHROPIC_API_KEY=sk-... npm run test:live
 # Test against a specific OpenClaw version
 npm test -- --openclaw-version 2026.2.3-1
 
+# Install plugin from npm registry instead of local link
+npm test -- --plugin-install-mode npm --plugin-spec @wooters/crabcallr
+
 # Run a single scenario
 npm test -- --scenario auth-connect
 
@@ -86,13 +89,15 @@ npm test -- --verbose
 |----------|------|---------------|
 | `auth-connect` | protocol + live | Plugin connects, sends `cc_*` API key, stays connected |
 | `ping-pong` | protocol + live | Mock sends ping, plugin responds with pong |
+| `ws-heartbeat` | protocol + live | Mock sends WebSocket ping control frame, plugin returns pong control frame |
 | `call-lifecycle` | protocol + live | call_start → user_message → (utterance in live) → call_end |
 | `multi-turn` | live only | 3 sequential user_messages in one call with LLM utterances |
 | `agent-end-call` | live only | Agent calls crabcallr_end_call tool → utterance(endCall=true) or call_end_request |
+| `protocol-schema` | protocol + live | All plugin↔manager JSON messages conform to schema |
 
 **Exit codes:** `0` = all pass, `1` = test failure, `2` = setup/infra error.
 
-**How it works:** The tool creates an isolated temp directory with `OPENCLAW_STATE_DIR` and `OPENCLAW_HOME` set, installs OpenClaw, links the plugin, writes config pointing at `ws://localhost:19876/plugin`, and spawns `openclaw gateway`. The mock ws-manager validates the plugin's auth message, responds to pings, and sends test call/user_message messages. See `tools/e2e-test/src/mock-ws-manager.ts` for the protocol implementation.
+**How it works:** The tool creates an isolated temp directory with `OPENCLAW_STATE_DIR` and `OPENCLAW_HOME` set, installs OpenClaw, installs the plugin (local link or npm spec), writes config pointing at `ws://localhost:19876/plugin`, and spawns `openclaw gateway`. The mock ws-manager validates the plugin's auth message, responds to app-level ping/pong and WebSocket heartbeat pings, and sends test call/user_message messages. See `tools/e2e-test/src/mock-ws-manager.ts` for the protocol implementation.
 
 **Key CLI flags:**
 
@@ -107,3 +112,6 @@ npm test -- --verbose
 | `--keep-env` | `false` | Preserve temp dir after run |
 | `--api-key-env <var>` | `ANTHROPIC_API_KEY` | Env var for LLM key |
 | `--model <id>` | `anthropic/claude-sonnet-4-6` | LLM model for live mode |
+| `--plugin-install-mode <mode>` | `link` | Plugin install path: `link` (local source) or `npm` (registry spec) |
+| `--plugin-spec <spec>` | `@wooters/crabcallr` | npm spec used when `--plugin-install-mode npm` |
+| `--pin-plugin-spec` | `false` | Pass `--pin` to `openclaw plugins install` for npm installs |

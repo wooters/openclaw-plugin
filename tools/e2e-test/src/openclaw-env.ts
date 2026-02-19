@@ -1,9 +1,9 @@
 /**
  * Isolated OpenClaw environment setup.
  *
- * Creates a temp OPENCLAW_STATE_DIR, installs OpenClaw, builds the plugin,
- * links it, and writes config so the gateway loads the CrabCallr plugin
- * pointing at the local mock ws-manager.
+ * Creates a temp OPENCLAW_STATE_DIR, installs OpenClaw, installs the plugin
+ * (local link mode or npm spec mode), and writes config so the gateway loads
+ * the CrabCallr plugin pointing at the local mock ws-manager.
  */
 
 import * as fs from "fs";
@@ -18,6 +18,9 @@ export interface OpenClawEnvOptions {
   live: boolean;
   apiKeyEnv: string;
   model: string;
+  pluginInstallMode: "link" | "npm";
+  pluginSpec: string;
+  pinPluginSpec: boolean;
   verbose: boolean;
 }
 
@@ -61,25 +64,40 @@ export async function createOpenClawEnv(opts: OpenClawEnvOptions): Promise<OpenC
   }
   log.info(`OpenClaw binary: ${openclawBin}`);
 
-  // 2. Build the plugin
-  const pluginDir = pluginRoot();
-  log.info("Building openclaw-plugin...");
-  execSync("npm run build", {
-    cwd: pluginDir,
-    stdio: opts.verbose ? "inherit" : "pipe",
-    timeout: 60_000,
-  });
+  // 2. Install CrabCallr plugin into OpenClaw state dir.
+  if (opts.pluginInstallMode === "link") {
+    const pluginDir = pluginRoot();
+    log.info("Building openclaw-plugin...");
+    execSync("npm run build", {
+      cwd: pluginDir,
+      stdio: opts.verbose ? "inherit" : "pipe",
+      timeout: 60_000,
+    });
 
-  // 3. Link the plugin into the OpenClaw state dir
-  log.info("Linking plugin into OpenClaw environment...");
-  execSync(`"${openclawBin}" plugins install -l "${pluginDir}"`, {
-    cwd: installDir,
-    stdio: opts.verbose ? "inherit" : "pipe",
-    timeout: 30_000,
-    env: { ...process.env, OPENCLAW_STATE_DIR: stateDir, OPENCLAW_HOME: tmpDir },
-  });
+    log.info("Installing plugin from local path (link mode)...");
+    execSync(`"${openclawBin}" plugins install --link "${pluginDir}"`, {
+      cwd: installDir,
+      stdio: opts.verbose ? "inherit" : "pipe",
+      timeout: 30_000,
+      env: { ...process.env, OPENCLAW_STATE_DIR: stateDir, OPENCLAW_HOME: tmpDir },
+    });
+  } else {
+    const pluginSpec = opts.pluginSpec.trim();
+    if (!pluginSpec) {
+      throw new Error("pluginSpec is required when pluginInstallMode=npm");
+    }
 
-  // 4. Merge channel + gateway config into openclaw.json
+    const pinArg = opts.pinPluginSpec ? " --pin" : "";
+    log.info(`Installing plugin from npm spec: ${pluginSpec}${opts.pinPluginSpec ? " (pinned)" : ""}`);
+    execSync(`"${openclawBin}" plugins install${pinArg} "${pluginSpec}"`, {
+      cwd: installDir,
+      stdio: opts.verbose ? "inherit" : "pipe",
+      timeout: 30_000,
+      env: { ...process.env, OPENCLAW_STATE_DIR: stateDir, OPENCLAW_HOME: tmpDir },
+    });
+  }
+
+  // 3. Merge channel + gateway config into openclaw.json
   //    `plugins install` already wrote state/openclaw.json with plugin entries;
   //    we merge our settings into that file so the gateway picks them up.
   const configPath = path.join(stateDir, "openclaw.json");
@@ -137,7 +155,7 @@ export async function createOpenClawEnv(opts: OpenClawEnvOptions): Promise<OpenC
   fs.writeFileSync(configPath, JSON.stringify(merged, null, 2));
   log.debug(`Wrote openclaw.json to ${stateDir}`);
 
-  // 5. For live mode, write auth-profiles.json for the default agent
+  // 4. For live mode, write auth-profiles.json for the default agent
   if (opts.live) {
     const apiKey = process.env[opts.apiKeyEnv];
     const agentDir = path.join(stateDir, "agents", "main", "agent");

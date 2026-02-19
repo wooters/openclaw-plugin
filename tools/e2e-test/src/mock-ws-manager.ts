@@ -10,7 +10,8 @@ import { readFileSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
 import { WebSocketServer, WebSocket } from "ws";
-import Ajv2020 from "ajv/dist/2020.js";
+import { Ajv2020 } from "ajv/dist/2020.js";
+import type { ValidateFunction } from "ajv/dist/2020.js";
 import type {
   CallSource,
   ManagerToPluginMessage,
@@ -23,8 +24,8 @@ const __dirname = dirname(__filename);
 
 // Load and compile protocol schema for validation
 const schemaPath = resolve(__dirname, "../../../protocol/crabcallr-protocol.schema.json");
-let validatePluginToManager: ReturnType<Ajv2020["compile"]> | null = null;
-let validateManagerToPlugin: ReturnType<Ajv2020["compile"]> | null = null;
+let validatePluginToManager: ValidateFunction | null = null;
+let validateManagerToPlugin: ValidateFunction | null = null;
 
 try {
   const schema = JSON.parse(readFileSync(schemaPath, "utf-8"));
@@ -50,6 +51,13 @@ export class MockWsManager extends EventEmitter {
   private messageWaiters: Array<{
     type: string;
     resolve: (msg: PluginToManagerMessage) => void;
+    reject: (err: Error) => void;
+    timer: NodeJS.Timeout;
+  }> = [];
+  private wsPongCount = 0;
+  private wsPongWaiters: Array<{
+    targetCount: number;
+    resolve: () => void;
     reject: (err: Error) => void;
     timer: NodeJS.Timeout;
   }> = [];
@@ -99,7 +107,8 @@ export class MockWsManager extends EventEmitter {
           log.debug(`Mock ws-manager: received ${message.type}`);
 
           // Validate inbound message against schema
-          if (validatePluginToManager && !validatePluginToManager(message)) {
+          const inboundForValidation: unknown = message;
+          if (validatePluginToManager && !validatePluginToManager(inboundForValidation)) {
             const errors = JSON.stringify(validatePluginToManager.errors);
             log.warn(`Mock ws-manager: schema violation (inbound ${message.type}): ${errors}`);
             this.schemaViolations.push({ direction: "inbound", message, errors });
@@ -171,6 +180,11 @@ export class MockWsManager extends EventEmitter {
           log.debug(`Mock ws-manager: plugin error: ${err.message}`);
         });
 
+        ws.on("pong", () => {
+          this.wsPongCount++;
+          this.notifyWsPongWaiters();
+        });
+
         this.emit("connection");
       });
 
@@ -193,6 +207,11 @@ export class MockWsManager extends EventEmitter {
         waiter.reject(new Error("Mock ws-manager shutting down"));
       }
       this.messageWaiters = [];
+      for (const waiter of this.wsPongWaiters) {
+        clearTimeout(waiter.timer);
+        waiter.reject(new Error("Mock ws-manager shutting down"));
+      }
+      this.wsPongWaiters = [];
 
       if (this.pluginWs) {
         this.pluginWs.close(1000, "Server shutting down");
@@ -248,6 +267,14 @@ export class MockWsManager extends EventEmitter {
     this.sendToPlugin({ type: "ping", ts: Date.now() });
   }
 
+  sendWsPing(): void {
+    if (!this.pluginWs || this.pluginWs.readyState !== WebSocket.OPEN) {
+      log.warn("Mock ws-manager: cannot send ws ping - plugin not connected");
+      return;
+    }
+    this.pluginWs.ping();
+  }
+
   sendCallEnd(callId: string, durationSeconds: number, source: CallSource): void {
     this.sendToPlugin({
       type: "call_end",
@@ -285,6 +312,20 @@ export class MockWsManager extends EventEmitter {
     return this.waitForMessage("utterance", timeoutMs);
   }
 
+  waitForWsPong(timeoutMs: number): Promise<void> {
+    const targetCount = this.wsPongCount + 1;
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        const idx = this.wsPongWaiters.findIndex((w) => w === waiter);
+        if (idx >= 0) this.wsPongWaiters.splice(idx, 1);
+        reject(new Error(`Timeout waiting for ws pong (${timeoutMs}ms)`));
+      }, timeoutMs);
+
+      const waiter = { targetCount, resolve, reject, timer };
+      this.wsPongWaiters.push(waiter);
+    });
+  }
+
   getReceivedMessages(): PluginToManagerMessage[] {
     return [...this.receivedMessages];
   }
@@ -314,7 +355,8 @@ export class MockWsManager extends EventEmitter {
     }
 
     // Validate outbound message against schema
-    if (validateManagerToPlugin && !validateManagerToPlugin(message)) {
+    const outboundForValidation: unknown = message;
+    if (validateManagerToPlugin && !validateManagerToPlugin(outboundForValidation)) {
       const errors = JSON.stringify(validateManagerToPlugin.errors);
       log.warn(`Mock ws-manager: schema violation (outbound ${message.type}): ${errors}`);
       this.schemaViolations.push({ direction: "outbound", message, errors });
@@ -339,6 +381,23 @@ export class MockWsManager extends EventEmitter {
     // Remove matched waiters in reverse order to preserve indices
     for (let i = matched.length - 1; i >= 0; i--) {
       this.messageWaiters.splice(matched[i], 1);
+    }
+  }
+
+  private notifyWsPongWaiters(): void {
+    const matched: number[] = [];
+
+    for (let i = 0; i < this.wsPongWaiters.length; i++) {
+      const waiter = this.wsPongWaiters[i];
+      if (this.wsPongCount < waiter.targetCount) continue;
+
+      clearTimeout(waiter.timer);
+      waiter.resolve();
+      matched.push(i);
+    }
+
+    for (let i = matched.length - 1; i >= 0; i--) {
+      this.wsPongWaiters.splice(matched[i], 1);
     }
   }
 }

@@ -37,7 +37,30 @@ program
     "LLM model for live mode",
     "anthropic/claude-sonnet-4-6",
   )
+  .option(
+    "--plugin-install-mode <mode>",
+    "How to install the CrabCallr plugin into OpenClaw: link | npm",
+    "link",
+  )
+  .option(
+    "--plugin-spec <spec>",
+    "Plugin npm spec for --plugin-install-mode npm",
+    "@wooters/crabcallr",
+  )
+  .option(
+    "--pin-plugin-spec",
+    "Pass --pin when installing plugin from npm spec",
+    false,
+  )
   .action(async (rawOpts: Record<string, unknown>) => {
+    const installMode = rawOpts.pluginInstallMode as string;
+    if (installMode !== "link" && installMode !== "npm") {
+      console.error(
+        `Invalid --plugin-install-mode: "${installMode}". Expected "link" or "npm".`,
+      );
+      process.exit(2);
+    }
+
     const opts: CliOptions = {
       openclawVersion: rawOpts.openclawVersion as string,
       live: rawOpts.live as boolean,
@@ -48,6 +71,9 @@ program
       keepEnv: rawOpts.keepEnv as boolean,
       apiKeyEnv: rawOpts.apiKeyEnv as string,
       model: rawOpts.model as string,
+      pluginInstallMode: installMode,
+      pluginSpec: rawOpts.pluginSpec as string,
+      pinPluginSpec: rawOpts.pinPluginSpec as boolean,
     };
 
     setVerbose(opts.verbose);

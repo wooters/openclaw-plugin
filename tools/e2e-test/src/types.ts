@@ -100,6 +100,7 @@ export type ManagerToPluginMessage =
 // ---- Test infrastructure types ----
 
 export type TestMode = "protocol" | "live";
+export type PluginInstallMode = "link" | "npm";
 
 export interface TestContext {
   mode: TestMode;
@@ -135,4 +136,7 @@ export interface CliOptions {
   keepEnv: boolean;
   apiKeyEnv: string;
   model: string;
+  pluginInstallMode: PluginInstallMode;
+  pluginSpec: string;
+  pinPluginSpec: boolean;
 }
