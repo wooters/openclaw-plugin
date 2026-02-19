@@ -35,7 +35,7 @@ program
   .option(
     "--model <id>",
     "LLM model for live mode",
-    "anthropic/claude-sonnet-4-6",
+    "anthropic/claude-haiku-4-5",
   )
   .option(
     "--plugin-install-mode <mode>",

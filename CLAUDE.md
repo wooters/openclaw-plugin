@@ -111,7 +111,7 @@ npm test -- --verbose
 | `--verbose` | `false` | Verbose logging |
 | `--keep-env` | `false` | Preserve temp dir after run |
 | `--api-key-env <var>` | `ANTHROPIC_API_KEY` | Env var for LLM key |
-| `--model <id>` | `anthropic/claude-sonnet-4-6` | LLM model for live mode |
+| `--model <id>` | `anthropic/claude-haiku-4-5` | LLM model for live mode |
 | `--plugin-install-mode <mode>` | `link` | Plugin install path: `link` (local source) or `npm` (registry spec) |
 | `--plugin-spec <spec>` | `@wooters/crabcallr` | npm spec used when `--plugin-install-mode npm` |
 | `--pin-plugin-spec` | `false` | Pass `--pin` to `openclaw plugins install` for npm installs |
