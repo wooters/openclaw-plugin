@@ -27,13 +27,18 @@ export function createAgentEndCallScenario(mock: MockWsManager): TestScenario {
         }
 
         const callId = "test-call-end";
+        let msgSeq = 1;
 
         // Re-send call_start + user_message whenever the plugin reconnects.
         // OpenClaw's auto-restart creates a new plugin instance that doesn't
         // know about the ongoing call, so we need to re-establish context.
+        // Use incrementing messageIds to avoid gateway deduplication — after
+        // an auto-restart the old channel outbound is lost, so we need the
+        // gateway to dispatch a fresh reply through the new plugin instance.
         const resendOnReconnect = () => {
+          msgSeq++;
           mock.sendCallStart(callId, "browser");
-          mock.sendUserMessage("usr_001", "Great, thanks. Talk to you later.", callId);
+          mock.sendUserMessage(`usr_${String(msgSeq).padStart(3, "0")}`, "Great, thanks. Talk to you later.", callId);
         };
         mock.on("authenticated", resendOnReconnect);
 

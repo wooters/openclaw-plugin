@@ -56,6 +56,21 @@ type CrabCallrConnection = {
 
 const connections = new Map<string, CrabCallrConnection>();
 
+/**
+ * Module-level set tracking callIds where end-call was requested. This must
+ * live outside the per-connection `callStates` because OpenClaw auto-restarts
+ * replace the connection record (and its callStates Map) while a deliver
+ * callback from a previous connection instance is still in-flight. Without
+ * this, the deliver callback's closure-captured callStates references a stale
+ * Map whose endCallRequested flag was never set (or was set on a Map that was
+ * subsequently replaced by yet another auto-restart).
+ */
+const endCallRequestedCallIds = new Set<string>();
+
+function isEndCallRequested(callId: string): boolean {
+  return endCallRequestedCallIds.has(callId);
+}
+
 const IDLE_CHECK_INTERVAL_MS = 10_000; // Check idle every 10 seconds
 
 function isLoopbackHost(hostname: string): boolean {
@@ -479,16 +494,19 @@ async function handleUserMessage(params: {
         }
         const replyText = payload.text?.trim();
 
-        // Check if agent requested call end (via crabcallr_end_call tool)
-        const state = callStates.get(callId);
-        if (state?.endCallRequested) {
+        // Check if agent requested call end (via crabcallr_end_call tool).
+        // Use isEndCallRequested() which checks all connection instances,
+        // not just the closure-captured callStates — after an auto-restart,
+        // the tool writes to the new connection's map while this deliver
+        // callback still references the old one.
+        if (isEndCallRequested(callId)) {
           if (!responseSent.value) {
             responseSent.value = true;
+            const state = callStates.get(callId);
             if (replyText) {
-              // Route goodbye through utterance(endCall=true) — voice agent speaks it, then terminates
-              ws.sendUtterance(callId, nextUtteranceId(state), replyText, true);
+              const uid = state ? nextUtteranceId(state) : `oc_end_${Date.now()}`;
+              ws.sendUtterance(callId, uid, replyText, true);
             } else {
-              // No goodbye text — silent hangup via call_end_request
               ws.sendCallEndRequest(callId);
             }
           }
@@ -520,10 +538,10 @@ async function handleUserMessage(params: {
         logError(`[CrabCallr] ${info.kind} reply failed: ${String(err)}`);
         if (info.kind === "final" && !responseSent.value) {
           responseSent.value = true;
-          const state = callStates.get(callId);
-          if (state?.endCallRequested) {
+          if (isEndCallRequested(callId)) {
             ws.sendCallEndRequest(callId);
           } else {
+            const state = callStates.get(callId);
             const uid = state ? nextUtteranceId(state) : `oc_err_${Date.now()}`;
             ws.sendUtterance(callId, uid, "I'm sorry, I encountered an error. Could you try again?");
           }
@@ -637,6 +655,7 @@ export function endCrabCallrCall(params?: {
   }
   const state = activeStates[0];
   state.endCallRequested = true;
+  endCallRequestedCallIds.add(state.callId);
   clearFillerTimer(state);
   return { ok: true };
 }
@@ -865,6 +884,7 @@ export const crabcallrPlugin: ChannelPlugin<ResolvedCrabCallrAccount> = {
           clearCallState(state);
           callStates.delete(callId);
         }
+        endCallRequestedCallIds.delete(callId);
       });
 
       const stop = () => {
@@ -891,6 +911,7 @@ export const crabcallrPlugin: ChannelPlugin<ResolvedCrabCallrAccount> = {
         record.ws.disconnect();
         connections.delete(record.accountId);
       }
+      endCallRequestedCallIds.clear();
       ctx.setStatus?.({
         accountId: ctx.accountId,
         running: false,
