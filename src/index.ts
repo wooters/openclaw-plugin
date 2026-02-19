@@ -19,7 +19,14 @@ import { setCrabCallrRuntime } from "./runtime.js";
 const require = createRequire(import.meta.url);
 const { version: PLUGIN_VERSION } = require("../package.json") as { version: string };
 
-const plugin = {
+const plugin: {
+  id: string;
+  name: string;
+  description: string;
+  version: string;
+  configSchema: ReturnType<typeof emptyPluginConfigSchema>;
+  register: (api: OpenClawPluginApi) => void;
+} = {
   id: "crabcallr",
   name: "CrabCallr",
   description: "CrabCallr voice channel plugin",

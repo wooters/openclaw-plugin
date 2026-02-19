@@ -402,7 +402,7 @@ async function handleUserMessage(params: {
     channel: CHANNEL_ID,
     accountId,
     peer: {
-      kind: "dm",
+      kind: "direct",
       id: callId,
     },
   });
