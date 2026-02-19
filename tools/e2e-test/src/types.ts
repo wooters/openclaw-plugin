@@ -120,6 +120,8 @@ export interface TestScenario {
   description: string;
   /** If true, scenario only runs in live mode */
   liveOnly?: boolean;
+  /** Override the default per-scenario timeout (ms) */
+  timeout?: number;
   run: (ctx: TestContext) => Promise<TestResult>;
 }
 

@@ -13,6 +13,7 @@ export function createAgentEndCallScenario(mock: MockWsManager): TestScenario {
     name: "agent-end-call",
     description: "Agent-initiated end call via crabcallr_end_call tool (live mode only)",
     liveOnly: true,
+    timeout: 60_000,
     async run(ctx: TestContext): Promise<TestResult> {
       const start = Date.now();
       try {

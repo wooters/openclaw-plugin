@@ -133,7 +133,8 @@ export async function runTests(opts: CliOptions): Promise<number> {
         continue;
       }
 
-      const result = await scenario.run(ctx);
+      const scenarioCtx = scenario.timeout ? { ...ctx, timeout: scenario.timeout } : ctx;
+      const result = await scenario.run(scenarioCtx);
       results.push(result);
 
       if (result.passed) {
