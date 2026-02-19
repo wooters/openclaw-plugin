@@ -52,6 +52,28 @@ openclaw plugins install @wooters/crabcallr
 | `reconnectInterval`    | number  | `5000`                          | Reconnection interval in ms            |
 | `maxReconnectAttempts` | number  | `10`                            | Max reconnect attempts (0 = unlimited) |
 
+## Security Hardening
+
+- Run OpenClaw's security audit regularly, especially after config/plugin changes:
+  - `openclaw security audit --deep`
+  - [OpenClaw Security (audit section)](https://docs.openclaw.ai/gateway/security#quick-check-openclaw-security-audit)
+  - [OpenClaw CLI Security Reference](https://docs.openclaw.ai/reference/cli-reference#openclaw-security)
+- Prefer pinned plugin versions for install/update operations:
+  - `openclaw plugins install @wooters/crabcallr@0.5.0`
+  - Re-run `openclaw plugins install @wooters/crabcallr@0.5.0` to stay on an exact version
+- Treat plugins as trusted code and prefer explicit plugin allowlists in OpenClaw config:
+  - [OpenClaw Plugins Safety Notes](https://docs.openclaw.ai/tools/plugin#safety-notes)
+  - Example:
+    ```json5
+    {
+      plugins: {
+        allow: ["crabcallr"]
+      }
+    }
+    ```
+- Keep your OpenClaw config file private:
+  - `chmod 600 ~/.openclaw/openclaw.json`
+
 ## CLI Commands
 
 Check connection status:

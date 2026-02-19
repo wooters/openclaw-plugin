@@ -51,13 +51,15 @@ export const DEFAULT_CONFIG: Omit<CrabCallrConfig, 'apiKey'> = {
  * Validates and normalizes plugin configuration
  */
 export function validateConfig(config: ValidateConfigInput): CrabCallrConfig {
-  if (!config.apiKey) {
+  const apiKey = config.apiKey?.trim();
+
+  if (!apiKey) {
     throw new Error(
       'CrabCallr API key is required. Get one at https://app.crabcallr.com'
     );
   }
 
-  if (!config.apiKey.startsWith('cc_')) {
+  if (!apiKey.startsWith('cc_')) {
     throw new Error(
       'Invalid CrabCallr API key format. Keys should start with "cc_"'
     );
@@ -94,7 +96,7 @@ export function validateConfig(config: ValidateConfigInput): CrabCallrConfig {
   const idle = resolveIdleConfig(config.idle);
 
   return {
-    apiKey: config.apiKey,
+    apiKey,
     serviceUrl,
     autoConnect: config.autoConnect ?? DEFAULT_CONFIG.autoConnect,
     reconnectInterval,

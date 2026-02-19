@@ -20,7 +20,7 @@ import type {
   CrabCallrLogger,
   ConnectionStatus,
 } from "./types.js";
-import { CrabCallrWebSocket } from "./websocket.js";
+import { CrabCallrWebSocket, MAX_TEXT_LENGTH } from "./websocket.js";
 
 const CHANNEL_ID = "crabcallr";
 
@@ -57,6 +57,11 @@ type CrabCallrConnection = {
 const connections = new Map<string, CrabCallrConnection>();
 
 const IDLE_CHECK_INTERVAL_MS = 10_000; // Check idle every 10 seconds
+
+function isLoopbackHost(hostname: string): boolean {
+  const normalized = hostname.trim().toLowerCase();
+  return normalized === "localhost" || normalized === "127.0.0.1" || normalized === "::1";
+}
 
 function createCallState(callId: string): CallState {
   return {
@@ -585,6 +590,18 @@ export function sendCrabCallrResponse(params: {
   callId: string;
   text: string;
 }): { ok: boolean; error?: string } {
+  const callId = params.callId.trim();
+  const text = params.text.trim();
+  if (!callId || !text) {
+    return { ok: false, error: "Missing callId or text parameter" };
+  }
+  if (text.length > MAX_TEXT_LENGTH) {
+    return {
+      ok: false,
+      error: `Text exceeds maximum length (${MAX_TEXT_LENGTH} characters)`,
+    };
+  }
+
   const resolvedId = normalizeAccountId(params.accountId ?? DEFAULT_ACCOUNT_ID);
   const record = connections.get(resolvedId);
   if (!record) {
@@ -593,9 +610,9 @@ export function sendCrabCallrResponse(params: {
   if (!record.ws.isConnected()) {
     return { ok: false, error: "CrabCallr is not connected" };
   }
-  const state = record.callStates.get(params.callId);
+  const state = record.callStates.get(callId);
   const uid = state ? nextUtteranceId(state) : `oc_ext_${Date.now()}`;
-  record.ws.sendUtterance(params.callId, uid, params.text);
+  record.ws.sendUtterance(callId, uid, text);
   record.statusSink?.({ lastOutboundAt: Date.now() });
   return { ok: true };
 }
@@ -706,6 +723,17 @@ export const crabcallrPlugin: ChannelPlugin<ResolvedCrabCallrAccount> = {
         getStatus: ctx.getStatus,
         setStatus: ctx.setStatus,
       });
+
+      try {
+        const parsedUrl = new URL(config.serviceUrl);
+        if (parsedUrl.protocol === "ws:" && !isLoopbackHost(parsedUrl.hostname)) {
+          logger.warn(
+            `[CrabCallr] Insecure serviceUrl configured (${config.serviceUrl}). Use wss:// for remote endpoints.`,
+          );
+        }
+      } catch {
+        // validateConfig enforces ws/wss URLs; this is a defensive fallback.
+      }
 
       const ws = new CrabCallrWebSocket(config, logger);
       const callStates = new Map<string, CallState>();

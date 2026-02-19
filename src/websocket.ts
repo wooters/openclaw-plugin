@@ -12,7 +12,6 @@ import type {
   CallEndRequestMessage,
   CallStartMessage,
   ConnectionStatus,
-  InboundWsMessage,
   OutboundWsMessage,
   PongMessage,
   UtteranceMessage,
@@ -29,6 +28,34 @@ const PING_INTERVAL = 30000;
 
 // Ping timeout
 const PING_TIMEOUT = 10000;
+
+// Maximum length for inbound/outbound message text payloads
+export const MAX_TEXT_LENGTH = 4000;
+
+type UnknownObject = Record<string, unknown>;
+
+function isObject(value: unknown): value is UnknownObject {
+  return typeof value === 'object' && value !== null;
+}
+
+function readOptionalString(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined;
+}
+
+function truncateText(text: string): { text: string; wasTruncated: boolean; originalLength: number } {
+  if (text.length <= MAX_TEXT_LENGTH) {
+    return { text, wasTruncated: false, originalLength: text.length };
+  }
+  return {
+    text: text.slice(0, MAX_TEXT_LENGTH),
+    wasTruncated: true,
+    originalLength: text.length,
+  };
+}
+
+function isCallSource(value: unknown): value is 'browser' | 'phone' {
+  return value === 'browser' || value === 'phone';
+}
 
 /**
  * Type-safe event emitter for CrabCallr events
@@ -148,11 +175,18 @@ export class CrabCallrWebSocket extends EventEmitter {
       return;
     }
 
+    const boundedText = truncateText(text);
+    if (boundedText.wasTruncated) {
+      this.logger.warn(
+        `[CrabCallr] Truncated outbound utterance text (callId: ${callId}, utteranceId: ${utteranceId}, originalChars: ${boundedText.originalLength}, maxChars: ${MAX_TEXT_LENGTH})`,
+      );
+    }
+
     const message: UtteranceMessage = {
       type: MessageType.UTTERANCE,
       utteranceId,
       callId,
-      text,
+      text: boundedText.text,
       ...(endCall ? { endCall } : {}),
       ts: Date.now(),
     };
@@ -182,7 +216,7 @@ export class CrabCallrWebSocket extends EventEmitter {
   private setStatus(status: ConnectionStatus): void {
     if (this.status !== status) {
       this.status = status;
-    this.logger.debug?.(`[CrabCallr] Status changed to: ${status}`);
+      this.logger.debug?.(`[CrabCallr] Status changed to: ${status}`);
     }
   }
 
@@ -202,22 +236,55 @@ export class CrabCallrWebSocket extends EventEmitter {
 
   private handleMessage(data: WebSocket.RawData): void {
     try {
-      const message = JSON.parse(data.toString()) as InboundWsMessage;
+      const message = JSON.parse(data.toString()) as unknown;
       this.processMessage(message);
     } catch (error) {
       this.logger.error(`[CrabCallr] Failed to parse message: ${String(error)}`);
     }
   }
 
-  private processMessage(message: InboundWsMessage): void {
+  private processMessage(message: unknown): void {
+    if (!isObject(message) || typeof message.type !== 'string') {
+      this.logger.warn('[CrabCallr] Ignoring malformed inbound message (missing type)');
+      return;
+    }
+
     switch (message.type) {
       case 'auth_result':
-        this.handleAuthResult(message);
+        if (typeof message.success !== 'boolean') {
+          this.logger.warn('[CrabCallr] Ignoring malformed auth_result message');
+          return;
+        }
+        this.handleAuthResult({
+          success: message.success,
+          userId: readOptionalString(message.userId),
+          error: readOptionalString(message.error),
+        });
         break;
 
-      case 'user_message':
-        this.handleUserMessage(message);
+      case 'user_message': {
+        if (
+          typeof message.messageId !== 'string' ||
+          typeof message.text !== 'string' ||
+          typeof message.callId !== 'string'
+        ) {
+          this.logger.warn('[CrabCallr] Ignoring malformed user_message payload');
+          return;
+        }
+
+        const boundedText = truncateText(message.text);
+        if (boundedText.wasTruncated) {
+          this.logger.warn(
+            `[CrabCallr] Truncated inbound user_message text (messageId: ${message.messageId}, callId: ${message.callId}, originalChars: ${boundedText.originalLength}, maxChars: ${MAX_TEXT_LENGTH})`,
+          );
+        }
+        this.handleUserMessage({
+          messageId: message.messageId,
+          text: boundedText.text,
+          callId: message.callId,
+        });
         break;
+      }
 
       case 'ping':
         this.handlePing();
@@ -228,12 +295,45 @@ export class CrabCallrWebSocket extends EventEmitter {
         break;
 
       case 'call_start':
-        this.handleCallStart(message);
+        if (
+          typeof message.callId !== 'string' ||
+          !isCallSource(message.source)
+        ) {
+          this.logger.warn('[CrabCallr] Ignoring malformed call_start payload');
+          return;
+        }
+        this.handleCallStart({
+          type: MessageType.CALL_START,
+          callId: message.callId,
+          source: message.source,
+          ts: Date.now(),
+        });
         break;
 
-      case 'call_end':
-        this.handleCallEnd(message);
+      case 'call_end': {
+        const durationSeconds = message.durationSeconds;
+        const startedAt = message.startedAt;
+        if (
+          typeof message.callId !== 'string' ||
+          typeof durationSeconds !== 'number' ||
+          !Number.isFinite(durationSeconds) ||
+          !isCallSource(message.source) ||
+          typeof startedAt !== 'number' ||
+          !Number.isFinite(startedAt)
+        ) {
+          this.logger.warn('[CrabCallr] Ignoring malformed call_end payload');
+          return;
+        }
+        this.handleCallEnd({
+          type: MessageType.CALL_END,
+          callId: message.callId,
+          durationSeconds,
+          source: message.source,
+          startedAt,
+          ts: Date.now(),
+        });
         break;
+      }
 
       default:
         this.logger.warn(`[CrabCallr] Unknown message type: ${(message as { type: string }).type}`);
@@ -259,7 +359,9 @@ export class CrabCallrWebSocket extends EventEmitter {
 
   private handleUserMessage(message: { messageId: string; text: string; callId: string }): void {
     const { messageId, text, callId } = message;
-    this.logger.debug?.(`[CrabCallr] User message: "${text}"`);
+    this.logger.debug?.(
+      `[CrabCallr] User message received (messageId: ${messageId}, callId: ${callId}, chars: ${text.length})`,
+    );
     this.emit('userMessage', messageId, text, callId);
   }
 

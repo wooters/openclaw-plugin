@@ -100,6 +100,20 @@ export function createCallLifecycleScenario(mock: MockWsManager): TestScenario {
           }
         }
 
+        // Send an oversized message and verify plugin stays connected.
+        // The plugin should truncate this input safely instead of disconnecting.
+        mock.sendUserMessage("usr_oversized", "x".repeat(4500), callId);
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        if (!mock.isConnected()) {
+          return {
+            name: "call-lifecycle",
+            passed: false,
+            skipped: false,
+            duration: Date.now() - start,
+            error: "Plugin disconnected after oversized user_message",
+          };
+        }
+
         // Verify still connected
         if (!mock.isConnected()) {
           return {
