@@ -33,11 +33,17 @@ export interface PluginPingMessage {
   ts: number;
 }
 
+export interface PluginPongMessage {
+  type: "pong";
+  ts: number;
+}
+
 export type PluginToManagerMessage =
   | AuthMessage
   | UtteranceMessage
   | CallEndRequestMessage
-  | PluginPingMessage;
+  | PluginPingMessage
+  | PluginPongMessage;
 
 // ---- Messages from manager to plugin (what the mock ws-manager sends) ----
 
@@ -73,6 +79,11 @@ export interface CallEndMessage {
   ts: number;
 }
 
+export interface PingMessage {
+  type: "ping";
+  ts: number;
+}
+
 export interface PongMessage {
   type: "pong";
   ts: number;
@@ -83,6 +94,7 @@ export type ManagerToPluginMessage =
   | UserMessageMessage
   | CallStartMessage
   | CallEndMessage
+  | PingMessage
   | PongMessage;
 
 // ---- Test infrastructure types ----

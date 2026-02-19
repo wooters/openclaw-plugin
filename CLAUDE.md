@@ -85,7 +85,7 @@ npm test -- --verbose
 | Scenario | Mode | What it tests |
 |----------|------|---------------|
 | `auth-connect` | protocol + live | Plugin connects, sends `cc_*` API key, stays connected |
-| `ping-pong` | protocol + live | Plugin sends keepalive pings, receives pongs |
+| `ping-pong` | protocol + live | Mock sends ping, plugin responds with pong |
 | `call-lifecycle` | protocol + live | call_start → user_message → (utterance in live) → call_end |
 | `multi-turn` | live only | 3 sequential user_messages in one call with LLM utterances |
 | `agent-end-call` | live only | Agent calls crabcallr_end_call tool → utterance(endCall=true) or call_end_request |
@@ -106,4 +106,4 @@ npm test -- --verbose
 | `--verbose` | `false` | Verbose logging |
 | `--keep-env` | `false` | Preserve temp dir after run |
 | `--api-key-env <var>` | `ANTHROPIC_API_KEY` | Env var for LLM key |
-| `--model <id>` | `anthropic/claude-haiku-4-5-20251001` | LLM model for live mode |
+| `--model <id>` | `anthropic/claude-sonnet-4-6` | LLM model for live mode |

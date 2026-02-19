@@ -22,30 +22,25 @@ export function createPingPongScenario(mock: MockWsManager): TestScenario {
           };
         }
 
-        // Send a pong (simulating the server responding to a plugin ping).
-        // The plugin sends pings on a 30s interval. Rather than wait 30s,
-        // we verify the reverse: send a "pong" from mock (which the plugin
-        // handles silently — it clears its ping timeout). This is a no-op
-        // test unless we also check that the plugin sends its own pings.
-
-        // Clear previously received messages so we only look at new ones
+        // Send a ping from the mock and verify the plugin responds with a pong.
+        // This tests the keepalive mechanism without waiting 30s for the plugin's
+        // own ping timer to fire.
         mock.clearReceivedMessages();
+        mock.sendPing();
 
-        // Wait up to 35s for the plugin to send a ping (its interval is 30s)
         try {
-          await mock.waitForMessage("ping", 35_000);
+          await mock.waitForMessage("pong", 2_000);
         } catch {
           return {
             name: "ping-pong",
             passed: false,
             skipped: false,
             duration: Date.now() - start,
-            error: "Plugin did not send a ping within 35s",
+            error: "Plugin did not respond with pong within 2s",
           };
         }
 
-        // Verify the mock ws-manager responded with a pong (handled automatically)
-        // and that the connection is still alive
+        // Verify the connection is still alive
         if (!mock.isConnected()) {
           return {
             name: "ping-pong",

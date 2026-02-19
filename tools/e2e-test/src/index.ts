@@ -35,7 +35,7 @@ program
   .option(
     "--model <id>",
     "LLM model for live mode",
-    "anthropic/claude-haiku-4-5-20251001",
+    "anthropic/claude-sonnet-4-6",
   )
   .action(async (rawOpts: Record<string, unknown>) => {
     const opts: CliOptions = {

@@ -70,8 +70,10 @@ export class MockWsManager extends EventEmitter {
 
         if (this.pluginWs) {
           log.warn("Mock ws-manager: replacing existing plugin connection");
-          this.pluginWs.removeAllListeners();
-          this.pluginWs.close(1000, "Replaced by new connection");
+          // Keep the old connection's message listeners active — OpenClaw's
+          // auto-restart creates a new plugin instance but the old one may
+          // still have an in-flight LLM response that arrives on the old
+          // socket. Only remove close/error listeners to avoid state confusion.
         }
 
         this.pluginWs = ws;
@@ -240,6 +242,10 @@ export class MockWsManager extends EventEmitter {
 
   sendUserMessage(messageId: string, text: string, callId: string): void {
     this.sendToPlugin({ type: "user_message", messageId, text, callId, ts: Date.now() });
+  }
+
+  sendPing(): void {
+    this.sendToPlugin({ type: "ping", ts: Date.now() });
   }
 
   sendCallEnd(callId: string, durationSeconds: number, source: CallSource): void {
