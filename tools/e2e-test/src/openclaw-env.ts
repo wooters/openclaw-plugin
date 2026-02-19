@@ -22,6 +22,7 @@ export interface OpenClawEnvOptions {
 }
 
 export interface OpenClawEnv {
+  tmpDir: string;
   stateDir: string;
   openclawBin: string;
   installDir: string;
@@ -75,7 +76,7 @@ export async function createOpenClawEnv(opts: OpenClawEnvOptions): Promise<OpenC
     cwd: installDir,
     stdio: opts.verbose ? "inherit" : "pipe",
     timeout: 30_000,
-    env: { ...process.env, OPENCLAW_STATE_DIR: stateDir },
+    env: { ...process.env, OPENCLAW_STATE_DIR: stateDir, OPENCLAW_HOME: tmpDir },
   });
 
   // 4. Merge channel + gateway config into openclaw.json
@@ -166,7 +167,7 @@ export async function createOpenClawEnv(opts: OpenClawEnvOptions): Promise<OpenC
     log.debug("Wrote auth-profiles for live mode");
   }
 
-  return { stateDir, openclawBin, installDir };
+  return { tmpDir, stateDir, openclawBin, installDir };
 }
 
 export function cleanupOpenClawEnv(env: OpenClawEnv): void {

@@ -63,7 +63,9 @@ export async function runTests(opts: CliOptions): Promise<number> {
     log.info("Starting OpenClaw gateway...");
     openclawProcess = new OpenClawProcess();
 
-    const processEnv: Record<string, string> = {};
+    const processEnv: Record<string, string> = {
+      OPENCLAW_HOME: openclawEnv.tmpDir,
+    };
     if (opts.live) {
       const apiKey = process.env[opts.apiKeyEnv];
       if (apiKey) {
