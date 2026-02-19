@@ -18,6 +18,8 @@ CrabCallr is a voice interface that lets you have natural conversations with you
 openclaw plugins install @wooters/crabcallr
 ```
 
+> **Note:** If you have a `plugins.allow` list in your `openclaw.json`, add `"crabcallr"` to it — otherwise the gateway won't load the plugin.
+
 ## Setup
 
 1. **Get an API key** - Sign up at [app.crabcallr.com](https://app.crabcallr.com) and generate an API key
