@@ -92,7 +92,7 @@ npm test -- --verbose
 
 **Exit codes:** `0` = all pass, `1` = test failure, `2` = setup/infra error.
 
-**How it works:** The tool creates an isolated temp `OPENCLAW_STATE_DIR`, installs OpenClaw, links the plugin, writes config pointing at `ws://localhost:19876/plugin`, and spawns `openclaw gateway`. The mock ws-manager validates the plugin's auth message, responds to pings, and sends test call/user_message messages. See `tools/e2e-test/src/mock-ws-manager.ts` for the protocol implementation.
+**How it works:** The tool creates an isolated temp directory with `OPENCLAW_STATE_DIR` and `OPENCLAW_HOME` set, installs OpenClaw, links the plugin, writes config pointing at `ws://localhost:19876/plugin`, and spawns `openclaw gateway`. The mock ws-manager validates the plugin's auth message, responds to pings, and sends test call/user_message messages. See `tools/e2e-test/src/mock-ws-manager.ts` for the protocol implementation.
 
 **Key CLI flags:**
 
