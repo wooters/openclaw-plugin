@@ -23,6 +23,12 @@ import type {
 import { CrabCallrWebSocket, MAX_TEXT_LENGTH } from "./websocket.js";
 
 const CHANNEL_ID = "crabcallr";
+const VOICE_SYSTEM_PROMPT = [
+  "You are in a live phone or voice call.",
+  "Keep responses short and spoken-friendly, usually 1 to 3 sentences.",
+  "Do not use markdown, bullet points, numbered lists, code blocks, URLs, or file paths.",
+  "If the user says goodbye or wants to hang up, call the crabcallr_end_call tool.",
+].join("\n");
 
 type ResolvedCrabCallrAccount = {
   accountId: string;
@@ -451,6 +457,7 @@ async function handleUserMessage(params: {
     ConversationLabel: `call:${callId}`,
     SenderName: "Voice Caller",
     SenderId: callId,
+    GroupSystemPrompt: VOICE_SYSTEM_PROMPT,
     Provider: CHANNEL_ID,
     Surface: CHANNEL_ID,
     MessageSid: messageId,
