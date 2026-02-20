@@ -40,8 +40,7 @@ export async function runTests(opts: CliOptions): Promise<number> {
   process.on("SIGTERM", signalHandler);
 
   try {
-    const mode = opts.live ? "live" : "protocol";
-    log.header(`CrabCallr E2E Tests (${mode} mode)`);
+    log.header("CrabCallr E2E Tests");
 
     // 1. Start mock ws-manager
     log.info("Starting mock ws-manager...");
@@ -53,7 +52,6 @@ export async function runTests(opts: CliOptions): Promise<number> {
     openclawEnv = await createOpenClawEnv({
       openclawVersion: opts.openclawVersion,
       wsManagerPort: opts.port,
-      live: opts.live,
       apiKeyEnv: opts.apiKeyEnv,
       model: opts.model,
       pluginInstallMode: opts.pluginInstallMode,
@@ -69,11 +67,9 @@ export async function runTests(opts: CliOptions): Promise<number> {
     const processEnv: Record<string, string> = {
       OPENCLAW_HOME: openclawEnv.tmpDir,
     };
-    if (opts.live) {
-      const apiKey = process.env[opts.apiKeyEnv];
-      if (apiKey) {
-        processEnv[opts.apiKeyEnv] = apiKey;
-      }
+    const apiKey = process.env[opts.apiKeyEnv];
+    if (apiKey) {
+      processEnv[opts.apiKeyEnv] = apiKey;
     }
 
     await openclawProcess.start({
@@ -115,7 +111,6 @@ export async function runTests(opts: CliOptions): Promise<number> {
     // 6. Run scenarios
     log.header("Running scenarios");
     const ctx: TestContext = {
-      mode,
       verbose: opts.verbose,
       timeout: opts.timeout,
     };
@@ -124,18 +119,6 @@ export async function runTests(opts: CliOptions): Promise<number> {
     const runStart = Date.now();
 
     for (const scenario of scenarios) {
-      if (scenario.liveOnly && mode !== "live") {
-        const result: TestResult = {
-          name: scenario.name,
-          passed: false,
-          skipped: true,
-          duration: 0,
-        };
-        results.push(result);
-        log.testSkip(scenario.name);
-        continue;
-      }
-
       const scenarioCtx = scenario.timeout ? { ...ctx, timeout: scenario.timeout } : ctx;
       const result = await scenario.run(scenarioCtx);
       results.push(result);

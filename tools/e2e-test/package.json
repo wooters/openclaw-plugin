@@ -4,9 +4,8 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "test": "tsx src/index.ts",
-    "test:live": "node --env-file=../../../.env -- ./node_modules/.bin/tsx src/index.ts --live",
-    "dev": "tsx src/index.ts --verbose"
+    "test": "node --env-file=../../../.env -- ./node_modules/.bin/tsx src/index.ts",
+    "dev": "node --env-file=../../../.env -- ./node_modules/.bin/tsx src/index.ts --verbose"
   },
   "dependencies": {
     "ajv": "^8.18.0",

@@ -1,8 +1,6 @@
 /**
  * Scenario: Agent-initiated end call — the LLM calls crabcallr_end_call and the
  * plugin routes the farewell through utterance(endCall=true) or call_end_request.
- *
- * Live-only: requires the LLM to invoke the crabcallr_end_call tool.
  */
 
 import type { MockWsManager } from "../mock-ws-manager.js";
@@ -11,8 +9,7 @@ import type { TestContext, TestResult, TestScenario } from "../types.js";
 export function createAgentEndCallScenario(mock: MockWsManager): TestScenario {
   return {
     name: "agent-end-call",
-    description: "Agent-initiated end call via crabcallr_end_call tool (live mode only)",
-    liveOnly: true,
+    description: "Agent-initiated end call via crabcallr_end_call tool",
     timeout: 60_000,
     async run(ctx: TestContext): Promise<TestResult> {
       const start = Date.now();

@@ -99,11 +99,9 @@ export type ManagerToPluginMessage =
 
 // ---- Test infrastructure types ----
 
-export type TestMode = "protocol" | "live";
 export type PluginInstallMode = "link" | "npm";
 
 export interface TestContext {
-  mode: TestMode;
   verbose: boolean;
   timeout: number;
 }
@@ -119,8 +117,6 @@ export interface TestResult {
 export interface TestScenario {
   name: string;
   description: string;
-  /** If true, scenario only runs in live mode */
-  liveOnly?: boolean;
   /** Override the default per-scenario timeout (ms) */
   timeout?: number;
   run: (ctx: TestContext) => Promise<TestResult>;
@@ -128,7 +124,6 @@ export interface TestScenario {
 
 export interface CliOptions {
   openclawVersion: string;
-  live: boolean;
   port: number;
   scenario: string | undefined;
   timeout: number;

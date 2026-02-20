@@ -35,69 +35,47 @@ export function createCallLifecycleScenario(mock: MockWsManager): TestScenario {
         mock.clearReceivedMessages();
         mock.sendUserMessage(messageId, "Say hello", callId);
 
-        if (ctx.mode === "live") {
-          // In live mode, expect an utterance with non-empty text
-          try {
-            const utterance = await mock.waitForUtterance(ctx.timeout);
+        // Expect an utterance with non-empty text
+        try {
+          const utterance = await mock.waitForUtterance(ctx.timeout);
 
-            if (utterance.type !== "utterance") {
-              return {
-                name: "call-lifecycle",
-                passed: false,
-                skipped: false,
-                duration: Date.now() - start,
-                error: `Expected utterance message, got ${utterance.type}`,
-              };
-            }
-
-            if (!("utteranceId" in utterance) || !utterance.utteranceId.startsWith("oc_")) {
-              return {
-                name: "call-lifecycle",
-                passed: false,
-                skipped: false,
-                duration: Date.now() - start,
-                error: `Invalid utteranceId: expected "oc_*", got "${"utteranceId" in utterance ? utterance.utteranceId : "N/A"}"`,
-              };
-            }
-
-            if (!("text" in utterance) || !utterance.text.trim()) {
-              return {
-                name: "call-lifecycle",
-                passed: false,
-                skipped: false,
-                duration: Date.now() - start,
-                error: "Utterance text is empty",
-              };
-            }
-          } catch (err) {
+          if (utterance.type !== "utterance") {
             return {
               name: "call-lifecycle",
               passed: false,
               skipped: false,
               duration: Date.now() - start,
-              error: `Live mode: ${String(err)}`,
+              error: `Expected utterance message, got ${utterance.type}`,
             };
           }
-        } else {
-          // Protocol mode: wait up to 15s for an utterance. If none comes, that's
-          // acceptable (no LLM configured). We just verify no crash/disconnect.
-          try {
-            const utterance = await mock.waitForUtterance(15_000);
-            // If we got an utterance, validate structure
-            if (utterance.type === "utterance" && "utteranceId" in utterance) {
-              if (!utterance.utteranceId.startsWith("oc_")) {
-                return {
-                  name: "call-lifecycle",
-                  passed: false,
-                  skipped: false,
-                  duration: Date.now() - start,
-                  error: `Invalid utteranceId format: "${utterance.utteranceId}"`,
-                };
-              }
-            }
-          } catch {
-            // Timeout is acceptable in protocol mode — no LLM to generate response
+
+          if (!("utteranceId" in utterance) || !utterance.utteranceId.startsWith("oc_")) {
+            return {
+              name: "call-lifecycle",
+              passed: false,
+              skipped: false,
+              duration: Date.now() - start,
+              error: `Invalid utteranceId: expected "oc_*", got "${"utteranceId" in utterance ? utterance.utteranceId : "N/A"}"`,
+            };
           }
+
+          if (!("text" in utterance) || !utterance.text.trim()) {
+            return {
+              name: "call-lifecycle",
+              passed: false,
+              skipped: false,
+              duration: Date.now() - start,
+              error: "Utterance text is empty",
+            };
+          }
+        } catch (err) {
+          return {
+            name: "call-lifecycle",
+            passed: false,
+            skipped: false,
+            duration: Date.now() - start,
+            error: String(err),
+          };
         }
 
         // Send an oversized message and verify plugin stays connected.

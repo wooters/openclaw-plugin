@@ -21,7 +21,6 @@ program
     "OpenClaw npm version to test against",
     "latest",
   )
-  .option("--live", "Enable live mode (real LLM responses)", false)
   .option("--port <n>", "Mock ws-manager port", "19876")
   .option("--scenario <name>", "Run specific scenario(s), comma-separated")
   .option("--timeout <ms>", "Per-scenario timeout in ms", "30000")
@@ -29,12 +28,12 @@ program
   .option("--keep-env", "Preserve temp OpenClaw dir after run", false)
   .option(
     "--api-key-env <var>",
-    "Env var for LLM API key (live mode)",
+    "Env var for LLM API key",
     "ANTHROPIC_API_KEY",
   )
   .option(
     "--model <id>",
-    "LLM model for live mode",
+    "LLM model",
     "anthropic/claude-haiku-4-5",
   )
   .option(
@@ -63,7 +62,6 @@ program
 
     const opts: CliOptions = {
       openclawVersion: rawOpts.openclawVersion as string,
-      live: rawOpts.live as boolean,
       port: parseInt(rawOpts.port as string, 10),
       scenario: rawOpts.scenario as string | undefined,
       timeout: parseInt(rawOpts.timeout as string, 10),

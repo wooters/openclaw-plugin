@@ -15,7 +15,6 @@ import * as log from "./logger.js";
 export interface OpenClawEnvOptions {
   openclawVersion: string;
   wsManagerPort: number;
-  live: boolean;
   apiKeyEnv: string;
   model: string;
   pluginInstallMode: "link" | "npm";
@@ -115,6 +114,9 @@ export async function createOpenClawEnv(opts: OpenClawEnvOptions): Promise<OpenC
         : {}),
       allow: ["crabcallr"],
     },
+    session: {
+      dmScope: "per-channel-peer",
+    },
     gateway: {
       auth: {
         token: E2E_GATEWAY_TOKEN,
@@ -135,29 +137,26 @@ export async function createOpenClawEnv(opts: OpenClawEnvOptions): Promise<OpenC
     },
   };
 
-  // For live mode, set model config
-  if (opts.live) {
-    const apiKey = process.env[opts.apiKeyEnv];
-    if (!apiKey) {
-      throw new Error(
-        `Live mode requires ${opts.apiKeyEnv} environment variable to be set`,
-      );
-    }
-    merged.agents = {
-      defaults: {
-        model: {
-          primary: opts.model,
-        },
-      },
-    };
+  // Set model config
+  const apiKey = process.env[opts.apiKeyEnv];
+  if (!apiKey) {
+    throw new Error(
+      `${opts.apiKeyEnv} environment variable must be set`,
+    );
   }
+  merged.agents = {
+    defaults: {
+      model: {
+        primary: opts.model,
+      },
+    },
+  };
 
   fs.writeFileSync(configPath, JSON.stringify(merged, null, 2));
   log.debug(`Wrote openclaw.json to ${stateDir}`);
 
-  // 4. For live mode, write auth-profiles.json for the default agent
-  if (opts.live) {
-    const apiKey = process.env[opts.apiKeyEnv];
+  // 4. Write auth-profiles.json for the default agent
+  {
     const agentDir = path.join(stateDir, "agents", "main", "agent");
     fs.mkdirSync(agentDir, { recursive: true });
 
@@ -182,7 +181,7 @@ export async function createOpenClawEnv(opts: OpenClawEnvOptions): Promise<OpenC
       path.join(agentDir, "auth-profiles.json"),
       JSON.stringify(authStore, null, 2),
     );
-    log.debug("Wrote auth-profiles for live mode");
+    log.debug("Wrote auth-profiles");
   }
 
   return { tmpDir, stateDir, openclawBin, installDir };
