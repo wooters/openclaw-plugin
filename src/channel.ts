@@ -263,8 +263,8 @@ const CrabCallrAccountSchema = Type.Object(
     ),
     requestTimeoutSec: Type.Optional(
       Type.Number({
-        description: "Timeout in seconds for each request to the LLM (default: 25)",
-        default: 25,
+        description: "Timeout in seconds for each request to the LLM (default: 60)",
+        default: 60,
       }),
     ),
     fillers: Type.Optional(FillerConfigSchema),

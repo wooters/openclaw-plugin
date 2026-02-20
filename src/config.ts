@@ -42,7 +42,7 @@ export const DEFAULT_CONFIG: Omit<CrabCallrConfig, 'apiKey'> = {
   autoConnect: true,
   reconnectInterval: 5000,
   maxReconnectAttempts: 10,
-  requestTimeoutSec: 25,
+  requestTimeoutSec: 60,
   fillers: DEFAULT_FILLER_CONFIG,
   idle: DEFAULT_IDLE_CONFIG,
 };
