@@ -28,6 +28,9 @@ openclaw plugins install @wooters/crabcallr
 
     ```json
     {
+      "session": {
+        "dmScope": "per-channel-peer"
+      },
       "channels": {
         "crabcallr": {
           "accounts": {
@@ -39,6 +42,8 @@ openclaw plugins install @wooters/crabcallr
       }
     }
     ```
+
+    > **Important:** The `session.dmScope` setting ensures each phone/browser call gets its own conversation history. Without it, OpenClaw uses a shared session and previous calls will bleed into new ones.
 
 3. **Restart OpenClaw Gateway** - The plugin will automatically connect to the CrabCallr service
 
