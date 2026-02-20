@@ -905,12 +905,21 @@ export const crabcallrPlugin: ChannelPlugin<ResolvedCrabCallrAccount> = {
         });
       };
 
-      ctx.abortSignal.addEventListener("abort", stop, { once: true });
-
       if (config.autoConnect) {
         logger.info("[CrabCallr] Auto-connecting to CrabCallr service");
         ws.connect();
       }
+
+      // Return a promise that stays pending until the abort signal fires.
+      // OpenClaw's gateway treats a resolved startAccount as "channel exited"
+      // and schedules an auto-restart, so we must keep this promise pending
+      // for the lifetime of the connection.
+      return new Promise<void>((resolve) => {
+        ctx.abortSignal.addEventListener("abort", () => {
+          stop();
+          resolve();
+        }, { once: true });
+      });
     },
     stopAccount: async (ctx: ChannelGatewayContext<ResolvedCrabCallrAccount>) => {
       const record = getConnection(ctx.accountId);
