@@ -126,13 +126,6 @@ This plugin includes a voice skill that automatically adapts OpenClaw's response
 
 The skill is automatically loaded when the plugin is enabled.
 
-## Pricing
-
-- **Free tier** - 30 min/month browser calling via WebRTC
-- **Basic tier** ($5/month) - 120 min browser + 30 min phone calling, $0.15/minute overage
-
-See [crabcallr.com](https://crabcallr.com) for current pricing.
-
 ## Troubleshooting
 
 ### Plugin won't connect
