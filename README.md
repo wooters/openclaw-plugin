@@ -97,8 +97,8 @@ openclaw channels status --probe
 
 ```plaintext
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   Your Phone    │────▶│  CrabCallr      │────▶│   Your         │
-│   or Browser    │◀────│  Service        │◀────│   OpenClaw     │
+│   Your Phone    │────▶│  CrabCallr      │────▶│   Your          │
+│   or Browser    │◀────│  Service        │◀────│   OpenClaw      │
 └─────────────────┘     └─────────────────┘     └─────────────────┘
         │                       │                       │
         │  Audio/WebRTC         │  WebSocket            │  Messages
