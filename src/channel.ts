@@ -234,7 +234,7 @@ const CrabCallrAccountSchema = Type.Object(
     enabled: Type.Optional(Type.Boolean()),
     apiKey: Type.Optional(
       Type.String({
-        description: "Your CrabCallr API key from app.crabcallr.com",
+        description: "Your CrabCallr API key from crabcallr.com/app",
       }),
     ),
     serviceUrl: Type.Optional(

@@ -55,7 +55,7 @@ export function validateConfig(config: ValidateConfigInput): CrabCallrConfig {
 
   if (!apiKey) {
     throw new Error(
-      'CrabCallr API key is required. Get one at https://app.crabcallr.com'
+      'CrabCallr API key is required. Get one at https://crabcallr.com/app'
     );
   }
 

@@ -26,7 +26,7 @@ openclaw plugins install @wooters/crabcallr
 
 ## Setup
 
-1. **Get an API key** - Sign up at [app.crabcallr.com](https://app.crabcallr.com) and generate an API key
+1. **Get an API key** - Sign up at [crabcallr.com/app](https://crabcallr.com/app) and generate an API key
 
 2. **Configure the plugin** - Add to your `~/.openclaw/openclaw.json`:
 
@@ -51,7 +51,7 @@ openclaw plugins install @wooters/crabcallr
 
 3. **Restart OpenClaw Gateway** - The plugin will automatically connect to the CrabCallr service
 
-4. **Start calling** - Visit [app.crabcallr.com](https://app.crabcallr.com) and click "Call" to talk to your assistant
+4. **Start calling** - Visit [crabcallr.com/app](https://crabcallr.com/app) and click "Call" to talk to your assistant
 
 ## Configuration Options
 
