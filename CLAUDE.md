@@ -13,7 +13,7 @@ npm run clean      # Remove dist directory
 
 ## Architecture
 
-This is a OpenClaw plugin that connects to the CrabCallr hosted service via WebSocket, enabling voice calling (phone/browser) to a OpenClaw assistant.
+This is an OpenClaw plugin that connects to the CrabCallr hosted service via WebSocket, enabling voice calling (phone/browser) to a OpenClaw assistant.
 
 ### Core Components
 
@@ -44,7 +44,7 @@ The `skills/crabcallr/SKILL.md` skill is automatically loaded when the plugin is
 
 The protocol JSON Schema is at `protocol/crabcallr-protocol.schema.json` (copy of canonical from `crabcallr/shared/protocol/`). The E2E test mock-ws-manager validates all messages against this schema during test runs — schema violations are reported as failures in the `protocol-schema` scenario.
 
-See `../CLAUDE.md` > Protocol Change Workflow for the full cross-repo update process.
+See the private parent monorepo's `CLAUDE.md` > Protocol Change Workflow for the full cross-repo update process. (The `../CLAUDE.md` reference is for internal cross-repo development and is not included in this public repo.)
 
 ## Testing
 
@@ -52,7 +52,7 @@ See `../CLAUDE.md` > Protocol Change Workflow for the full cross-repo update pro
 
 End-to-end tests that verify the plugin works against a real OpenClaw gateway. The tool starts a **mock ws-manager** (local WebSocket server), spawns an **OpenClaw gateway**, installs the plugin (local link or npm spec), and runs test scenarios validating the full connection lifecycle.
 
-**When to use:** After making changes to plugin code (WebSocket handling, auth, message routing, config). Run before committing to catch integration regressions. Requires `ANTHROPIC_API_KEY` in the top-level `.env` file (`cc/.env`).
+**When to use:** After making changes to plugin code (WebSocket handling, auth, message routing, config). Run before committing to catch integration regressions. Requires an `ANTHROPIC_API_KEY` environment variable (set it in your shell or a `.env` file in the repo root).
 
 **Setup:**
 
@@ -64,7 +64,7 @@ npm install
 **Running tests:**
 
 ```bash
-# Run all scenarios (requires ANTHROPIC_API_KEY in cc/.env)
+# Run all scenarios (requires ANTHROPIC_API_KEY env var)
 npm test
 
 # Test against a specific OpenClaw version
