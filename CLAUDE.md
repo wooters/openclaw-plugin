@@ -1,5 +1,14 @@
 # CLAUDE.md
 
+## Core Engineering Principles
+
+1. **Clarity over cleverness** — Write code that's maintainable, not impressive
+2. **Explicit over implicit** — No magic. Make behavior obvious
+3. **Composition over inheritance** — Small units that combine
+4. **Fail fast, fail loud** — Surface errors at the source
+5. **Delete code** — Less code = fewer bugs. Question every addition
+6. **Verify, don't assume** — Run it. Test it. Prove it works
+
 ## Message Flow (fire-and-forget)
 
 1. CrabCallr service sends `user_message` (user speech transcription)
