@@ -1,28 +1,6 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
-## Build Commands
-
-```bash
-npm install        # Install dependencies
-npm run build      # Compile TypeScript to dist/
-npm run dev        # Watch mode for development
-npm run clean      # Remove dist directory
-```
-
-## Architecture
-
-This is an OpenClaw plugin that connects to the CrabCallr hosted service via WebSocket, enabling voice calling (phone/browser) to a OpenClaw assistant.
-
-### Core Components
-
-- **src/index.ts** - Plugin entry point exporting a default `register(api: PluginAPI)` function. Registers as a channel plugin, service, tools, and CLI commands. Handles transcript-to-response flow via channel inbound/outbound APIs.
-- **src/websocket.ts** - `CrabCallrWebSocket` class managing persistent connection to CrabCallr service. Handles authentication, reconnection with exponential backoff, and ping/pong keepalive.
-- **src/types.ts** - All TypeScript interfaces including PluginAPI, channel plugin types, message types (AUTH, USER_MESSAGE, UTTERANCE, etc.), and config schema.
-- **src/config.ts** - Configuration validation and defaults.
-
-### Message Flow (fire-and-forget)
+## Message Flow (fire-and-forget)
 
 1. CrabCallr service sends `user_message` (user speech transcription)
 2. Plugin forwards text to OpenClaw via `api.inbound.receiveMessage()` as a channel message
@@ -32,11 +10,11 @@ This is an OpenClaw plugin that connects to the CrabCallr hosted service via Web
 
 No request/response correlation — plugin sends utterances (responses, fillers, idle prompts, goodbyes) as fire-and-forget messages. The `endCall` flag on an utterance signals the call should end after speaking.
 
-### Voice Skill
+## Voice Skill
 
 The `skills/crabcallr/SKILL.md` skill is automatically loaded when the plugin is enabled. It instructs the LLM to produce concise, spoken-friendly responses without markdown, code blocks, or bullet points.
 
-### Plugin Manifest
+## Plugin Manifest
 
 `openclaw.plugin.json` defines the plugin ID, channel metadata (label, docsPath, blurb, aliases), skill paths, and configuration schema requiring an `apiKey` (format: `cc_*`). Config is located at `channels.crabcallr.accounts.default`.
 
@@ -44,40 +22,21 @@ The `skills/crabcallr/SKILL.md` skill is automatically loaded when the plugin is
 
 The protocol JSON Schema is at `protocol/crabcallr-protocol.schema.json` (copy of canonical from `crabcallr/shared/protocol/`). The E2E test mock-ws-manager validates all messages against this schema during test runs — schema violations are reported as failures in the `protocol-schema` scenario.
 
-See the private parent monorepo's `CLAUDE.md` > Protocol Change Workflow for the full cross-repo update process. (The `../CLAUDE.md` reference is for internal cross-repo development and is not included in this public repo.)
+See the parent monorepo's `CLAUDE.md` > Protocol Change Workflow for the full cross-repo update process.
 
-## Testing
+## E2E Plugin Tests (`tools/e2e-test/`)
 
-### E2E Plugin Tests (`tools/e2e-test/`)
+End-to-end tests that verify the plugin works against a real OpenClaw gateway. The tool starts a **mock ws-manager** (local WebSocket server), spawns an **OpenClaw gateway**, installs the plugin (local link or npm spec), and runs test scenarios.
 
-End-to-end tests that verify the plugin works against a real OpenClaw gateway. The tool starts a **mock ws-manager** (local WebSocket server), spawns an **OpenClaw gateway**, installs the plugin (local link or npm spec), and runs test scenarios validating the full connection lifecycle.
-
-**When to use:** After making changes to plugin code (WebSocket handling, auth, message routing, config). Run before committing to catch integration regressions. Requires an `ANTHROPIC_API_KEY` environment variable (set it in your shell or a `.env` file in the repo root).
-
-**Setup:**
+**When to use:** After making changes to plugin code. Run before committing to catch integration regressions. Requires `ANTHROPIC_API_KEY`.
 
 ```bash
 cd tools/e2e-test
 npm install
-```
-
-**Running tests:**
-
-```bash
-# Run all scenarios (requires ANTHROPIC_API_KEY env var)
-npm test
-
-# Test against a specific OpenClaw version
-npm test -- --openclaw-version 2026.2.3-1
-
-# Install plugin from npm registry instead of local link
-npm test -- --plugin-install-mode npm --plugin-spec @wooters/crabcallr
-
-# Run a single scenario
-npm test -- --scenario auth-connect
-
-# Verbose output (shows all ws messages and gateway logs)
-npm test -- --verbose
+npm test                                          # run all scenarios
+npm test -- --openclaw-version 2026.2.3-1         # specific OpenClaw version
+npm test -- --plugin-install-mode npm --plugin-spec @wooters/crabcallr  # from npm registry
+npm test -- --scenario auth-connect --verbose     # single scenario, verbose
 ```
 
 **Test scenarios:**
@@ -93,23 +52,3 @@ npm test -- --verbose
 | `protocol-schema` | All plugin↔manager JSON messages conform to schema |
 
 Each scenario gets an isolated OpenClaw session (via `session.dmScope = "per-channel-peer"`) keyed by its `callId`, preventing conversation history from bleeding across scenarios.
-
-**Exit codes:** `0` = all pass, `1` = test failure, `2` = setup/infra error.
-
-**How it works:** The tool creates an isolated temp directory with `OPENCLAW_STATE_DIR` and `OPENCLAW_HOME` set, installs OpenClaw, installs the plugin (local link or npm spec), writes config pointing at `ws://localhost:19876/plugin`, and spawns `openclaw gateway`. The mock ws-manager validates the plugin's auth message, responds to app-level ping/pong and WebSocket heartbeat pings, and sends test call/user_message messages. See `tools/e2e-test/src/mock-ws-manager.ts` for the protocol implementation.
-
-**Key CLI flags:**
-
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--openclaw-version <ver>` | `latest` | OpenClaw npm version |
-| `--port <n>` | `19876` | Mock ws-manager port |
-| `--scenario <name>` | all | Run specific scenario(s) |
-| `--timeout <ms>` | `30000` | Per-scenario timeout |
-| `--verbose` | `false` | Verbose logging |
-| `--keep-env` | `false` | Preserve temp dir after run |
-| `--api-key-env <var>` | `ANTHROPIC_API_KEY` | Env var for LLM key |
-| `--model <id>` | `anthropic/claude-haiku-4-5` | LLM model |
-| `--plugin-install-mode <mode>` | `link` | Plugin install path: `link` (local source) or `npm` (registry spec) |
-| `--plugin-spec <spec>` | `@wooters/crabcallr` | npm spec used when `--plugin-install-mode npm` |
-| `--pin-plugin-spec` | `false` | Pass `--pin` to `openclaw plugins install` for npm installs |
