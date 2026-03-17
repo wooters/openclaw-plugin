@@ -37,7 +37,7 @@ See the parent monorepo's `CLAUDE.md` > Protocol Change Workflow for the full cr
 
 End-to-end tests that verify the plugin works against a real OpenClaw gateway. The tool starts a **mock ws-manager** (local WebSocket server), spawns an **OpenClaw gateway**, installs the plugin (local link or npm spec), and runs test scenarios.
 
-**When to use:** After making changes to plugin code. Run before committing to catch integration regressions. Requires `ANTHROPIC_API_KEY`.
+**When to use:** After making changes to plugin code. Run before committing to catch integration regressions. Requires `OPENAI_API_KEY`.
 
 ```bash
 cd tools/e2e-test

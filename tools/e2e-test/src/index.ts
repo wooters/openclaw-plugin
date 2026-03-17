@@ -29,12 +29,12 @@ program
   .option(
     "--api-key-env <var>",
     "Env var for LLM API key",
-    "ANTHROPIC_API_KEY",
+    "OPENAI_API_KEY",
   )
   .option(
     "--model <id>",
     "LLM model",
-    "anthropic/claude-haiku-4-5",
+    "openai/gpt-4o-mini",
   )
   .option(
     "--plugin-install-mode <mode>",
